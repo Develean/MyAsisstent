@@ -5,12 +5,12 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Platform,
   StatusBar,
   Alert,
   Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector, useAppDispatch } from '../../store/store';
 import { setSelectedDay, setSelectedDate, ScheduleWithSubject } from './scheduleSlice';
 import { SubjectDetailModal } from './components/SubjectDetailModal';
@@ -78,172 +78,6 @@ interface CalendarDayItem {
   hasDot: boolean;
 }
 
-const DEFAULT_SCHEDULES_BY_DAY: Record<
-  string,
-  Array<{
-    id: number;
-    name: string;
-    room: string;
-    startTime: string;
-    endTime: string;
-    initial: string;
-    bg: string;
-    textColor: string;
-  }>
-> = {
-  Jumat: [
-    { id: 101, name: 'Matematika', room: 'Ruang 11A', startTime: '07:30', endTime: '09:00', initial: 'M', bg: '#DBEAFE', textColor: '#1D4ED8' },
-    { id: 102, name: 'Biologi', room: 'Lab IPA', startTime: '09:00', endTime: '10:30', initial: 'B', bg: '#E0F2F1', textColor: '#115E59' },
-    { id: 103, name: 'Sejarah', room: 'Ruang 11A', startTime: '11:00', endTime: '12:30', initial: 'S', bg: '#EDE9FE', textColor: '#5B21B6' },
-  ],
-  Kamis: [
-    { id: 201, name: 'Fisika', room: 'Lab Fisika', startTime: '07:30', endTime: '09:00', initial: 'F', bg: '#DBEAFE', textColor: '#1D4ED8' },
-    { id: 202, name: 'Kimia', room: 'Lab Kimia', startTime: '09:00', endTime: '10:30', initial: 'K', bg: '#FEF3C7', textColor: '#D97706' },
-    { id: 203, name: 'Bahasa Indonesia', room: 'Ruang 11A', startTime: '11:00', endTime: '12:30', initial: 'B', bg: '#DCFCE7', textColor: '#15803D' },
-  ],
-  Senin: [
-    { id: 301, name: 'Upacara Bendera', room: 'Lapangan Utama', startTime: '07:00', endTime: '08:00', initial: 'U', bg: '#FEE2E2', textColor: '#DC2626' },
-    { id: 302, name: 'Matematika Wajib', room: 'Ruang 11A', startTime: '08:00', endTime: '10:00', initial: 'M', bg: '#DBEAFE', textColor: '#1D4ED8' },
-    { id: 303, name: 'Bahasa Inggris', room: 'Lab Bahasa', startTime: '10:15', endTime: '11:45', initial: 'E', bg: '#EDE9FE', textColor: '#5B21B6' },
-  ],
-  Selasa: [
-    { id: 401, name: 'PJOK Olahraga', room: 'Gelanggang Olahraga', startTime: '07:30', endTime: '09:30', initial: 'P', bg: '#DCFCE7', textColor: '#15803D' },
-    { id: 402, name: 'Seni Budaya', room: 'Ruang Kesenian', startTime: '09:45', endTime: '11:15', initial: 'S', bg: '#FEF3C7', textColor: '#D97706' },
-    { id: 403, name: 'Geografi', room: 'Ruang 11A', startTime: '11:15', endTime: '12:45', initial: 'G', bg: '#E0F2F1', textColor: '#115E59' },
-  ],
-  Rabu: [
-    { id: 501, name: 'Sosiologi', room: 'Ruang 11A', startTime: '07:30', endTime: '09:00', initial: 'S', bg: '#EDE9FE', textColor: '#5B21B6' },
-    { id: 502, name: 'Ekonomi Akuntansi', room: 'Ruang 11A', startTime: '09:00', endTime: '10:30', initial: 'E', bg: '#FEF3C7', textColor: '#D97706' },
-    { id: 503, name: 'PPKN', room: 'Ruang 11A', startTime: '11:00', endTime: '12:30', initial: 'P', bg: '#FEE2E2', textColor: '#DC2626' },
-  ],
-  Sabtu: [
-    { id: 601, name: 'Ekstrakurikuler Robotik', room: 'Lab Komputer', startTime: '08:00', endTime: '10:00', initial: 'R', bg: '#DBEAFE', textColor: '#1D4ED8' },
-    { id: 602, name: 'Pramuka Wajib', room: 'Aula Utama', startTime: '10:00', endTime: '12:00', initial: 'P', bg: '#FEF3C7', textColor: '#D97706' },
-  ],
-  Minggu: [
-    { id: 701, name: 'Istirahat & Belajar Mandiri', room: 'Di Rumah', startTime: '09:00', endTime: '11:00', initial: 'I', bg: '#DCFCE7', textColor: '#15803D' },
-  ],
-};
-
-const NOTES_BY_DAY: Record<
-  string,
-  Array<{
-    id: number;
-    subject: string;
-    title: string;
-    content: string;
-    time: string;
-    initial: string;
-    bg: string;
-    textColor: string;
-  }>
-> = {
-  Jumat: [
-    {
-      id: 1,
-      subject: 'Biologi',
-      title: 'Kisi-kisi Metabolisme & Enzim',
-      content: 'Hafalkan cara kerja enzim kunci gembok & siklus glikolisis (halaman 54-62).',
-      time: '09:45',
-      initial: 'B',
-      bg: '#E0F2F1',
-      textColor: '#115E59',
-    },
-    {
-      id: 2,
-      subject: 'Matematika',
-      title: 'Rumus Cepat Limit Fungsi Aljabar',
-      content: 'Catatan turunan bentuk tak tentu 0/0 menggunakan metode L’Hopital.',
-      time: '08:15',
-      initial: 'M',
-      bg: '#DBEAFE',
-      textColor: '#1D4ED8',
-    },
-  ],
-  Kamis: [
-    {
-      id: 3,
-      subject: 'Fisika',
-      title: 'Rumus GLBB Dipercepat & Diperlambat',
-      content: 'vt = v0 + at, s = v0 t + 1/2 a t^2, vt^2 = v0^2 + 2as.',
-      time: '08:30',
-      initial: 'F',
-      bg: '#DBEAFE',
-      textColor: '#1D4ED8',
-    },
-    {
-      id: 4,
-      subject: 'Kimia',
-      title: 'Struktur Tata Nama Alkana',
-      content: 'Rantai utama terpanjang, penomoran cabang dari ujung terdekat.',
-      time: '10:15',
-      initial: 'K',
-      bg: '#FEF3C7',
-      textColor: '#D97706',
-    },
-  ],
-  Senin: [
-    {
-      id: 5,
-      subject: 'Matematika Wajib',
-      title: 'Matriks & Transformasi Geometri',
-      content: 'Perkalian matriks ordo 2x2 dan determinan ad - bc.',
-      time: '09:10',
-      initial: 'M',
-      bg: '#DBEAFE',
-      textColor: '#1D4ED8',
-    },
-  ],
-  Selasa: [
-    {
-      id: 6,
-      subject: 'Geografi',
-      title: 'Peta Topografi & Kontur Interval',
-      content: 'Rumus CI = 1/2000 x penyebut skala.',
-      time: '11:45',
-      initial: 'G',
-      bg: '#E0F2F1',
-      textColor: '#115E59',
-    },
-  ],
-  Rabu: [
-    {
-      id: 7,
-      subject: 'Sosiologi',
-      title: 'Bentuk Perubahan Sosial Budaya',
-      content: 'Evolusi vs revolusi, perubahan terencana vs tidak terencana.',
-      time: '08:40',
-      initial: 'S',
-      bg: '#EDE9FE',
-      textColor: '#5B21B6',
-    },
-  ],
-  Sabtu: [
-    {
-      id: 8,
-      subject: 'Robotik',
-      title: 'Pemrograman Sensor Ultrasonik HC-SR04',
-      content: 'Koneksi pin Trigger & Echo ke mikrokontroler Arduino Uno.',
-      time: '09:30',
-      initial: 'R',
-      bg: '#DBEAFE',
-      textColor: '#1D4ED8',
-    },
-  ],
-  Minggu: [
-    {
-      id: 9,
-      subject: 'Review Mingguan',
-      title: 'Persiapan Pelajaran Hari Senin',
-      content: 'Cek perlengkapan seragam upacara dan PR yang belum tuntas.',
-      time: '19:00',
-      initial: 'R',
-      bg: '#DBEAFE',
-      textColor: '#1D4ED8',
-    },
-  ],
-};
-
 const getSubjectPalette = (name: string) => {
   const n = name.toLowerCase();
   if (n.includes('mate') || n.includes('fisi')) return { bg: '#DBEAFE', text: '#1D4ED8' };
@@ -296,8 +130,8 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
         (e) => e.examDate === fullDateStr
       );
 
-      // Has dot indicator: exam date, or master mockup default (28 Okt)
-      const hasDot = hasExamOnDate || (selectedMonthIndex === 9 && d === 28);
+      // Has dot indicator: only if an exam exists on this date
+      const hasDot = hasExamOnDate;
 
       list.push({
         dateNum: d,
@@ -330,14 +164,8 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
   // Real DB schedules for the selected day
   const dbSchedulesForDay = schedules.filter((s) => s.dayOfWeek === selectedDay);
 
-  // Fallback master design items if user hasn't added custom schedules yet
-  const fallbackList = DEFAULT_SCHEDULES_BY_DAY[selectedDay] || [];
-
   // Nearest exam
   const nearestExam = exams.length > 0 ? exams[0] : null;
-
-  // Notes for this day
-  const notesForDay = NOTES_BY_DAY[selectedDay] || [];
 
   const handleOpenAddOptions = () => {
     Alert.alert(
@@ -411,8 +239,15 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
     setIsMonthPickerVisible(false);
   };
 
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0,
+    24
+  ) + 10;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: topPadding }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -475,25 +310,23 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
         </View>
 
         {/* =========================================================
-            3. EXAM ALERT CARD: PTS Biologi, 5 hari lagi | H-5
+            3. EXAM ALERT CARD: Tampil jika ada ujian yang dijadwalkan
             ========================================================= */}
-        <TouchableOpacity
-          style={styles.examAlertCard}
-          onPress={() => setIsExamModalVisible(true)}
-          activeOpacity={0.85}
-        >
-          <View style={styles.examAlertLeft}>
-            <Text style={styles.examAlertTag}>Ujian</Text>
-            <Text style={styles.examAlertTitle}>
-              {nearestExam
-                ? `${nearestExam.title}, ${nearestExam.daysLeft} hari lagi`
-                : 'PTS Biologi, 5 hari lagi'}
-            </Text>
-          </View>
-          <Text style={styles.examAlertCountdown}>
-            {nearestExam ? `H-${nearestExam.daysLeft}` : 'H-5'}
-          </Text>
-        </TouchableOpacity>
+        {nearestExam && (
+          <TouchableOpacity
+            style={styles.examAlertCard}
+            onPress={() => setIsExamModalVisible(true)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.examAlertLeft}>
+              <Text style={styles.examAlertTag}>Ujian</Text>
+              <Text style={styles.examAlertTitle}>
+                {nearestExam.title}, {nearestExam.daysLeft} hari lagi
+              </Text>
+            </View>
+            <Text style={styles.examAlertCountdown}>H-{nearestExam.daysLeft}</Text>
+          </TouchableOpacity>
+        )}
 
         {/* =========================================================
             4. SECTION HEADER: Date / Mapel Count
@@ -504,9 +337,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
             {INDONESIAN_MONTHS_SHORT[selectedMonthIndex]}
           </Text>
           <Text style={styles.sectionCountText}>
-            {dbSchedulesForDay.length > 0
-              ? `${dbSchedulesForDay.length} mapel`
-              : `${fallbackList.length} mapel`}
+            {dbSchedulesForDay.length} mapel
           </Text>
         </View>
 
@@ -546,56 +377,11 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
                 </TouchableOpacity>
               );
             })
-          ) : fallbackList.length > 0 ? (
-            fallbackList.map((item, index) => {
-              const isLast = index === fallbackList.length - 1;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.timetablerow, isLast && styles.timetablerowLast]}
-                  onPress={() => {
-                    setSelectedSchedule({
-                      id: item.id,
-                      subjectId: item.id,
-                      dayOfWeek: selectedDay,
-                      startTime: item.startTime,
-                      endTime: item.endTime,
-                      subject: {
-                        id: item.id,
-                        name: item.name,
-                        room: item.room,
-                        color: item.textColor,
-                        bgColor: item.bg,
-                        initial: item.initial,
-                      },
-                    });
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.subjectInitialBox, { backgroundColor: item.bg }]}>
-                    <Text style={[styles.subjectInitialText, { color: item.textColor }]}>
-                      {item.initial}
-                    </Text>
-                  </View>
-
-                  <View style={styles.subjectMiddleBox}>
-                    <Text style={styles.subjectNameText} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text style={styles.subjectRoomText} numberOfLines={1}>
-                      {item.room}
-                    </Text>
-                  </View>
-
-                  <Text style={styles.subjectTimeText}>{item.startTime}</Text>
-                </TouchableOpacity>
-              );
-            })
           ) : (
             <View style={styles.emptyTimetableBox}>
               <BookOpen size={28} color="#94A3B8" />
               <Text style={styles.emptyTimetableText}>
-                Tidak ada jadwal pelajaran di hari {selectedDay}
+                Belum ada jadwal pelajaran di hari {selectedDay}
               </Text>
             </View>
           )}
@@ -621,41 +407,14 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
             {INDONESIAN_MONTHS_SHORT[selectedMonthIndex]}
           </Text>
           <View style={styles.notesCountBadge}>
-            <Text style={styles.notesCountText}>{notesForDay.length} catatan</Text>
+            <Text style={styles.notesCountText}>0 catatan</Text>
           </View>
         </View>
 
-        <View style={styles.notesListWrapper}>
-          {notesForDay.map((note) => (
-            <TouchableOpacity
-              key={note.id}
-              style={styles.noteCard}
-              onPress={() =>
-                Alert.alert(
-                  note.title,
-                  `${note.subject} · ${note.time}\n\n${note.content}`
-                )
-              }
-              activeOpacity={0.8}
-            >
-              <View style={styles.noteCardHeader}>
-                <View style={[styles.noteSubjectInitial, { backgroundColor: note.bg }]}>
-                  <Text style={[styles.noteInitialText, { color: note.textColor }]}>
-                    {note.initial}
-                  </Text>
-                </View>
-                <View style={styles.noteSubjectInfo}>
-                  <Text style={styles.noteSubjectTitle}>{note.subject}</Text>
-                  <Text style={styles.noteTime}>{note.time}</Text>
-                </View>
-              </View>
-
-              <Text style={styles.noteTitleText}>{note.title}</Text>
-              <Text style={styles.noteSnippetText} numberOfLines={2}>
-                {note.content}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.emptyNotesCard}>
+          <Text style={styles.emptyNotesText}>
+            Belum ada catatan materi untuk hari ini.
+          </Text>
         </View>
       </ScrollView>
 
@@ -766,7 +525,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
         visible={isExamModalVisible}
         onClose={() => setIsExamModalVisible(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -774,7 +533,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F3F6FA',
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -1084,6 +842,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     lineHeight: 18,
+  },
+  emptyNotesCard: {
+    marginTop: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#EDF1F7',
+  },
+  emptyNotesText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    fontWeight: '600',
+    textAlign: 'center',
   },
 
   // Modal Styles

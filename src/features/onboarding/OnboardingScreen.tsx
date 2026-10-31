@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
-  SafeAreaView,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch } from '../../store/store';
 import { completeOnboarding } from '../user/userSlice';
 
@@ -65,8 +67,15 @@ export const OnboardingScreen: React.FC = () => {
     );
   };
 
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0,
+    24
+  ) + 8;
+
   return (
-    <SafeAreaView className="flex-1 bg-surface-bg">
+    <View className="flex-1 bg-surface-bg" style={{ paddingTop: topPadding }}>
       <View className="flex-1 px-6 justify-between py-6">
         {/* Top Header / Progress Dots */}
         <View className="flex-row justify-between items-center mt-2">
@@ -203,7 +212,7 @@ export const OnboardingScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 export default OnboardingScreen;

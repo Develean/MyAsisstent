@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeScreen } from '../../features/home/HomeScreen';
 import { ScheduleScreen } from '../../features/schedule/ScheduleScreen';
 import { FocusScreen } from '../../features/focus/FocusScreen';
@@ -26,6 +27,9 @@ interface BottomTabNavigatorProps {
 }
 
 export const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ onOpenAddModal }) => {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 8);
+
   return (
     <Tab.Navigator
       initialRouteName="Beranda"
@@ -34,7 +38,13 @@ export const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ onOpenAd
         tabBarShowLabel: true,
         tabBarActiveTintColor: '#2563EB',
         tabBarInactiveTintColor: '#5B6678',
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: 60 + bottomInset,
+            paddingBottom: bottomInset,
+          },
+        ],
         tabBarLabelStyle: styles.tabBarLabel,
       }}
     >

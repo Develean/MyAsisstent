@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TextInput,
   Platform,
@@ -12,6 +11,7 @@ import {
   Alert,
   Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { useAppSelector, useAppDispatch } from '../../store/store';
 import {
@@ -21,6 +21,7 @@ import {
   resetTimer,
   tick,
   setActiveTask,
+  clearActiveTask,
 } from './focusSlice';
 import {
   toggleSubtaskCompletion,
@@ -87,17 +88,13 @@ export const FocusScreen: React.FC = () => {
     }
   }, [focus.remainingSeconds, focus.isRunning, dispatch]);
 
-  // Active task selection
-  const activeTask =
-    tasks.find((t) => t.id === focus.activeTaskId) ||
-    tasks.find((t) => !t.isCompleted) ||
-    tasks[0];
+  // Active task selection: strictly based on activeTaskId (no fake/dummy fallback)
+  const activeTask = focus.activeTaskId
+    ? tasks.find((t) => t.id === focus.activeTaskId) || null
+    : null;
 
-  const subtasks = activeTask?.subtasks || [
-    { id: 1, taskId: 1, title: 'Baca rumus GLB & GLBB (hal 42)', isCompleted: true, orderIdx: 0 },
-    { id: 2, taskId: 1, title: 'Kerjakan latihan no 1-5 halaman 45', isCompleted: false, orderIdx: 1 },
-    { id: 3, taskId: 1, title: 'Buat rangkuman grafik v-t di buku', isCompleted: false, orderIdx: 2 },
-  ];
+  // Real subtasks from active task (no dummy items)
+  const subtasks = activeTask?.subtasks || [];
 
   const completedSubtasksCount = subtasks.filter((s) => s.isCompleted).length;
   const totalSubtasksCount = subtasks.length;
@@ -143,8 +140,15 @@ export const FocusScreen: React.FC = () => {
     setCustomInputText('');
   };
 
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0,
+    24
+  ) + 10;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: topPadding }]}>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
@@ -164,25 +168,36 @@ export const FocusScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Card: Sedang dikerjakan (Task Card from Image) */}
-        <TouchableOpacity
-          style={styles.taskCard}
-          activeOpacity={0.9}
-          onPress={() => setIsTaskPickerOpen(true)}
-        >
-          <View style={styles.taskBadgeBox}>
-            <Text style={styles.taskBadgeText}>
-              {getTaskSubjectName(activeTask).charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.taskCardLabel}>Sedang dikerjakan</Text>
-            <Text style={styles.taskCardTitle} numberOfLines={1}>
-              {activeTask?.title || 'Latihan Fisika GLBB'}
-            </Text>
-          </View>
-          <ChevronDown size={18} color="#4A5670" />
-        </TouchableOpacity>
+        {/* Card: Sedang dikerjakan (HANYA MUNCUL JIKA ADA TUGAS YANG DIKERJAKAN) */}
+        {activeTask ? (
+          <TouchableOpacity
+            style={styles.taskCard}
+            activeOpacity={0.9}
+            onPress={() => setIsTaskPickerOpen(true)}
+          >
+            <View style={styles.taskBadgeBox}>
+              <Text style={styles.taskBadgeText}>
+                {getTaskSubjectName(activeTask).charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.taskCardLabel}>Sedang dikerjakan</Text>
+              <Text style={styles.taskCardTitle} numberOfLines={1}>
+                {activeTask.title}
+              </Text>
+            </View>
+            <ChevronDown size={18} color="#4A5670" />
+          </TouchableOpacity>
+        ) : tasks.filter((t) => !t.isCompleted).length > 0 ? (
+          <TouchableOpacity
+            style={styles.chooseTaskPillBtn}
+            onPress={() => setIsTaskPickerOpen(true)}
+            activeOpacity={0.8}
+          >
+            <Sparkles size={14} color="#2563EB" style={{ marginRight: 6 }} />
+            <Text style={styles.chooseTaskPillText}>+ Kaitkan dengan Tugas (Opsional)</Text>
+          </TouchableOpacity>
+        ) : null}
 
         {/* Circular Timer Ring (Exact styling from Image) */}
         <View style={styles.timerRingContainer}>
@@ -308,66 +323,74 @@ export const FocusScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* BOX SUBTASK (SESUAI PERMINTAAN PENGGUNA) */}
-        <View style={styles.subtaskCard}>
-          <View style={styles.subtaskHeaderRow}>
-            <Text style={styles.subtaskTitle}>Subtask / Langkah Kerja</Text>
-            <View style={styles.subtaskProgressBadge}>
-              <Text style={styles.subtaskProgressText}>
-                {completedSubtasksCount} dari {totalSubtasksCount} tuntas
-              </Text>
+        {/* BOX SUBTASK (HANYA MUNCUL JIKA ADA TUGAS YANG DIKERJAKAN) */}
+        {activeTask && (
+          <View style={styles.subtaskCard}>
+            <View style={styles.subtaskHeaderRow}>
+              <Text style={styles.subtaskTitle}>Subtask / Langkah Kerja</Text>
+              <View style={styles.subtaskProgressBadge}>
+                <Text style={styles.subtaskProgressText}>
+                  {completedSubtasksCount} dari {totalSubtasksCount} tuntas
+                </Text>
+              </View>
             </View>
-          </View>
 
-          {/* Subtask Item List */}
-          <View style={styles.subtaskList}>
-            {subtasks.map((item) => (
+            {/* Subtask Item List */}
+            {subtasks.length > 0 ? (
+              <View style={styles.subtaskList}>
+                {subtasks.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.subtaskItemRow}
+                    onPress={() => handleToggleSubtask(item.id)}
+                    activeOpacity={0.8}
+                  >
+                    <View
+                      style={[
+                        styles.checkboxBox,
+                        item.isCompleted && styles.checkboxBoxChecked,
+                      ]}
+                    >
+                      {item.isCompleted && <Check size={13} color="#FFFFFF" strokeWidth={3} />}
+                    </View>
+                    <Text
+                      style={[
+                        styles.subtaskItemText,
+                        item.isCompleted && styles.subtaskItemTextDone,
+                      ]}
+                    >
+                      {item.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.emptySubtaskHint}>
+                Belum ada subtask untuk tugas ini. Tambah langkah kerja di bawah:
+              </Text>
+            )}
+
+            {/* Tambah Subtask Input Form */}
+            <View style={styles.addSubtaskRow}>
+              <TextInput
+                style={styles.subtaskInput}
+                placeholder="Tambah langkah baru..."
+                placeholderTextColor="#94A3B8"
+                value={newSubtaskTitle}
+                onChangeText={setNewSubtaskTitle}
+                onSubmitEditing={handleAddNewSubtask}
+                returnKeyType="done"
+              />
               <TouchableOpacity
-                key={item.id}
-                style={styles.subtaskItemRow}
-                onPress={() => handleToggleSubtask(item.id)}
+                style={styles.addSubtaskBtn}
+                onPress={handleAddNewSubtask}
                 activeOpacity={0.8}
               >
-                <View
-                  style={[
-                    styles.checkboxBox,
-                    item.isCompleted && styles.checkboxBoxChecked,
-                  ]}
-                >
-                  {item.isCompleted && <Check size={13} color="#FFFFFF" strokeWidth={3} />}
-                </View>
-                <Text
-                  style={[
-                    styles.subtaskItemText,
-                    item.isCompleted && styles.subtaskItemTextDone,
-                  ]}
-                >
-                  {item.title}
-                </Text>
+                <Text style={styles.addSubtaskBtnText}>+ Tambah</Text>
               </TouchableOpacity>
-            ))}
+            </View>
           </View>
-
-          {/* Tambah Subtask Input Form */}
-          <View style={styles.addSubtaskRow}>
-            <TextInput
-              style={styles.subtaskInput}
-              placeholder="Tambah langkah baru..."
-              placeholderTextColor="#94A3B8"
-              value={newSubtaskTitle}
-              onChangeText={setNewSubtaskTitle}
-              onSubmitEditing={handleAddNewSubtask}
-              returnKeyType="done"
-            />
-            <TouchableOpacity
-              style={styles.addSubtaskBtn}
-              onPress={handleAddNewSubtask}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.addSubtaskBtnText}>+ Tambah</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        )}
       </ScrollView>
 
       {/* Task Picker Modal */}
@@ -386,27 +409,50 @@ export const FocusScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
             <ScrollView style={{ maxHeight: 320 }}>
-              {tasks.map((t) => (
-                <TouchableOpacity
-                  key={t.id}
-                  style={[
-                    styles.taskOptionRow,
-                    activeTask?.id === t.id && styles.taskOptionRowSelected,
-                  ]}
-                  onPress={() => {
-                    dispatch(setActiveTask({ taskId: t.id }));
-                    setIsTaskPickerOpen(false);
-                  }}
-                >
-                  <Text style={styles.taskOptionSubject}>[{getTaskSubjectName(t)}]</Text>
-                  <Text style={styles.taskOptionTitle} numberOfLines={1}>
-                    {t.title}
+              {/* Option to clear active task / focus without linked task */}
+              <TouchableOpacity
+                style={[
+                  styles.taskOptionRow,
+                  activeTask === null && styles.taskOptionRowSelected,
+                ]}
+                onPress={() => {
+                  dispatch(clearActiveTask());
+                  setIsTaskPickerOpen(false);
+                }}
+              >
+                <Text style={[styles.taskOptionSubject, { color: '#64748B' }]}>[Bebas]</Text>
+                <Text style={styles.taskOptionTitle}>Fokus Mandiri (Tanpa Tugas Terkait)</Text>
+              </TouchableOpacity>
+
+              {tasks.length === 0 ? (
+                <View style={{ paddingVertical: 18, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#94A3B8', fontWeight: '600' }}>
+                    Belum ada tugas yang dibuat.
                   </Text>
-                  {t.isCompleted && (
-                    <Text style={styles.taskCompletedTag}>Selesai</Text>
-                  )}
-                </TouchableOpacity>
-              ))}
+                </View>
+              ) : (
+                tasks.map((t) => (
+                  <TouchableOpacity
+                    key={t.id}
+                    style={[
+                      styles.taskOptionRow,
+                      activeTask?.id === t.id && styles.taskOptionRowSelected,
+                    ]}
+                    onPress={() => {
+                      dispatch(setActiveTask({ taskId: t.id }));
+                      setIsTaskPickerOpen(false);
+                    }}
+                  >
+                    <Text style={styles.taskOptionSubject}>[{getTaskSubjectName(t)}]</Text>
+                    <Text style={styles.taskOptionTitle} numberOfLines={1}>
+                      {t.title}
+                    </Text>
+                    {t.isCompleted && (
+                      <Text style={styles.taskCompletedTag}>Selesai</Text>
+                    )}
+                  </TouchableOpacity>
+                ))
+              )}
             </ScrollView>
           </View>
         </View>
@@ -458,7 +504,7 @@ export const FocusScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -466,7 +512,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F3F6FA',
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0,
   },
   container: {
     paddingHorizontal: 16,
@@ -517,6 +562,31 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderWidth: 1,
     borderColor: '#EBF0F7',
+  },
+  chooseTaskPillBtn: {
+    marginTop: 6,
+    marginBottom: 6,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  chooseTaskPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  emptySubtaskHint: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'center',
+    paddingVertical: 12,
+    fontWeight: '500',
   },
   taskBadgeBox: {
     width: 40,

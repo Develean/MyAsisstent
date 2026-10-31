@@ -4,12 +4,12 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   Platform,
   StatusBar,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector, useAppDispatch } from '../../store/store';
 import { addExp } from '../user/userSlice';
 import { MascotPuppetView } from './mascot/MascotPuppetView';
@@ -17,16 +17,32 @@ import { Cloud, Settings } from 'lucide-react-native';
 
 export const ProfileScreen: React.FC = () => {
   const dispatch = useAppDispatch();
+  const insets = useSafeAreaInsets();
   const user = useAppSelector((state) => state.user);
   const tasks = useAppSelector((state) => state.tasks.tasks);
+  const focus = useAppSelector((state) => state.focus);
 
   const completedTasksCount = tasks.filter((t) => t.isCompleted).length;
+  const focusSessionsCount = focus.completedSessions || 0;
+
+  const isBadge1Unlocked = (user.streakDays || 0) >= 1;
+  const isBadge7Unlocked = (user.streakDays || 0) >= 7;
+  const isBadge14Unlocked = (user.streakDays || 0) >= 14;
+  const isBadge30Unlocked = (user.streakDays || 0) >= 30;
+  const unlockedBadgesCount = [isBadge1Unlocked, isBadge7Unlocked, isBadge14Unlocked, isBadge30Unlocked].filter(Boolean).length;
 
   const handleExpBonus = (exp: number) => {
     dispatch(addExp(exp));
   };
 
   const expPercentage = Math.min(100, Math.round((user.currentExp / user.maxExp) * 100));
+
+  // Dynamic safe top padding to prevent ANY status bar overlap on Android & iOS
+  const topPadding = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0,
+    24
+  ) + 10;
 
   const handleBackupNow = () => {
     Alert.alert(
@@ -36,7 +52,7 @@ export const ProfileScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: topPadding }]}>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
@@ -82,66 +98,134 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* 2. 3 Stat Cards in a Row (Exact Match Design Image 1) */}
+        {/* 2. 3 Stat Cards in a Row (Real Data) */}
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{user.streakDays || 4}</Text>
+            <Text style={styles.statNumber}>{user.streakDays || 0}</Text>
             <Text style={styles.statLabel}>Streak hari</Text>
           </View>
 
           <View style={styles.statBox}>
-            <Text style={styles.statNumber}>18</Text>
+            <Text style={styles.statNumber}>{focusSessionsCount}</Text>
             <Text style={styles.statLabel}>Sesi fokus</Text>
           </View>
 
           <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{completedTasksCount || 27}</Text>
+            <Text style={styles.statNumber}>{completedTasksCount}</Text>
             <Text style={styles.statLabel}>Tugas selesai</Text>
           </View>
         </View>
 
-        {/* 3. Section Lencana (Exact Match Design Image 1) */}
+        {/* 3. Section Lencana (Real Unlocked Status) */}
         <View style={styles.badgesSection}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Lencana</Text>
-            <Text style={styles.sectionSubtitle}>3 dari 12</Text>
+            <Text style={styles.sectionSubtitle}>{unlockedBadgesCount} dari 12</Text>
           </View>
 
           <View style={styles.badgesCard}>
             {/* Badge 1: 1 Hari Streak */}
             <TouchableOpacity
-              style={[styles.badgeBox, { backgroundColor: '#FFF1CC' }]}
+              style={[
+                styles.badgeBox,
+                { backgroundColor: isBadge1Unlocked ? '#FFF1CC' : '#F1F5F9' },
+              ]}
               activeOpacity={0.8}
-              onPress={() => Alert.alert('Lencana 1', 'Langkah Pertama! Belajar konsisten selama 1 hari (Tuntas)')}
+              onPress={() =>
+                Alert.alert(
+                  'Lencana 1 Hari',
+                  isBadge1Unlocked
+                    ? 'Langkah Pertama! Belajar konsisten selama 1 hari (Tuntas ✅)'
+                    : 'Pertahankan belajar 1 hari untuk membuka lencana ini.'
+                )
+              }
             >
-              <Text style={[styles.badgeNumber, { color: '#92400E' }]}>1</Text>
+              <Text
+                style={[
+                  styles.badgeNumber,
+                  { color: isBadge1Unlocked ? '#92400E' : '#94A3B8' },
+                ]}
+              >
+                1
+              </Text>
             </TouchableOpacity>
 
             {/* Badge 2: 7 Hari Streak */}
             <TouchableOpacity
-              style={[styles.badgeBox, { backgroundColor: '#DBEAFE' }]}
+              style={[
+                styles.badgeBox,
+                { backgroundColor: isBadge7Unlocked ? '#DBEAFE' : '#F1F5F9' },
+              ]}
               activeOpacity={0.8}
-              onPress={() => Alert.alert('Lencana 7', 'Pejuang Sepekan! Pertahankan 7 hari streak berturut-turut (Tuntas)')}
+              onPress={() =>
+                Alert.alert(
+                  'Lencana 7 Hari',
+                  isBadge7Unlocked
+                    ? 'Pejuang Sepekan! Pertahankan 7 hari streak berturut-turut (Tuntas ✅)'
+                    : 'Pertahankan 7 hari streak untuk membuka lencana ini.'
+                )
+              }
             >
-              <Text style={[styles.badgeNumber, { color: '#1D4ED8' }]}>7</Text>
+              <Text
+                style={[
+                  styles.badgeNumber,
+                  { color: isBadge7Unlocked ? '#1D4ED8' : '#94A3B8' },
+                ]}
+              >
+                7
+              </Text>
             </TouchableOpacity>
 
             {/* Badge 3: 14 Hari Streak */}
             <TouchableOpacity
-              style={[styles.badgeBox, { backgroundColor: '#EDE9FE' }]}
+              style={[
+                styles.badgeBox,
+                { backgroundColor: isBadge14Unlocked ? '#EDE9FE' : '#F1F5F9' },
+              ]}
               activeOpacity={0.8}
-              onPress={() => Alert.alert('Lencana 14', 'Master Konsistensi! Belajar tekun selama 14 hari (Tuntas)')}
+              onPress={() =>
+                Alert.alert(
+                  'Lencana 14 Hari',
+                  isBadge14Unlocked
+                    ? 'Master Konsistensi! Belajar tekun selama 14 hari (Tuntas ✅)'
+                    : 'Pertahankan 14 hari streak untuk membuka lencana ini.'
+                )
+              }
             >
-              <Text style={[styles.badgeNumber, { color: '#5B21B6' }]}>14</Text>
+              <Text
+                style={[
+                  styles.badgeNumber,
+                  { color: isBadge14Unlocked ? '#5B21B6' : '#94A3B8' },
+                ]}
+              >
+                14
+              </Text>
             </TouchableOpacity>
 
-            {/* Badge 4: 30 Hari Streak (Terkunci) */}
+            {/* Badge 4: 30 Hari Streak */}
             <TouchableOpacity
-              style={[styles.badgeBox, { backgroundColor: '#F1F5F9' }]}
+              style={[
+                styles.badgeBox,
+                { backgroundColor: isBadge30Unlocked ? '#FEF3C7' : '#F1F5F9' },
+              ]}
               activeOpacity={0.8}
-              onPress={() => Alert.alert('Lencana 30', 'Legenda Belajar! Capai 30 hari streak untuk membuka lencana emas ini (Dalam Progres)')}
+              onPress={() =>
+                Alert.alert(
+                  'Lencana 30 Hari',
+                  isBadge30Unlocked
+                    ? 'Legenda Belajar! Capai 30 hari streak untuk membuka lencana emas ini (Tuntas ✅)'
+                    : 'Pertahankan 30 hari streak untuk membuka lencana ini.'
+                )
+              }
             >
-              <Text style={[styles.badgeNumber, { color: '#94A3B8' }]}>30</Text>
+              <Text
+                style={[
+                  styles.badgeNumber,
+                  { color: isBadge30Unlocked ? '#B45309' : '#94A3B8' },
+                ]}
+              >
+                30
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -171,7 +255,7 @@ export const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -179,7 +263,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F3F6FA',
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0,
   },
   container: {
     paddingHorizontal: 16,

@@ -6,11 +6,11 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
-  SafeAreaView,
   Platform,
   StatusBar,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector, useAppDispatch } from '../../store/store';
 import {
   TaskWithSubtasks,
@@ -18,6 +18,7 @@ import {
   toggleSubtaskCompletion,
 } from '../tasks/taskSlice';
 import { addExp } from '../user/userSlice';
+import { setActiveTask } from '../focus/focusSlice';
 import { TaskDetailModal } from '../tasks/components/TaskDetailModal';
 import {
   Flame,
@@ -32,6 +33,7 @@ interface HomeScreenProps {
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNavigateTab }) => {
   const dispatch = useAppDispatch();
+  const insets = useSafeAreaInsets();
   const user = useAppSelector((state) => state.user);
   const tasks = useAppSelector((state) => state.tasks.tasks);
   const schedules = useAppSelector((state) => state.schedule.schedules);
@@ -44,6 +46,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
 
   // Nearest exam for hero countdown banner
   const nearestExam = exams.length > 0 ? exams[0] : null;
+
+  // Real date & schedules for today
+  const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+  const now = new Date();
+  const currentDayName = DAY_NAMES[now.getDay()];
+  const currentDateStr = `${currentDayName}, ${now.getDate()} ${MONTH_NAMES_SHORT[now.getMonth()]}`;
+  const todaySchedules = schedules.filter((s) => s.dayOfWeek === currentDayName);
+
+  // Real EXP percentage calculation (fixed 670% bug)
+  const currentExp = user.currentExp ?? 0;
+  const maxExp = user.maxExp || 1000;
+  const expPercentage = Math.min(100, Math.max(5, Math.round((currentExp / maxExp) * 100)));
+
+  // Dynamic safe top padding to prevent ANY status bar overlap on Android & iOS
+  const topPadding = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0,
+    24
+  ) + 10;
 
   const handleToggleTask = (task: TaskWithSubtasks) => {
     const willComplete = !task.isCompleted;
@@ -65,7 +87,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: topPadding }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -106,40 +128,44 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
               <View
                 style={[
                   styles.progressBarFill,
-                  { width: `${Math.min(100, Math.max(10, user.currentExp || 65))}%` },
+                  { width: `${expPercentage}%` },
                 ]}
               />
             </View>
-            <Text style={styles.percentText}>{user.currentExp || 65}%</Text>
+            <Text style={styles.percentText}>{expPercentage}%</Text>
           </View>
         </View>
 
         {/* =========================================================
             3. HERO CARD: Hitung Mundur Ujian & Maskot Hamster
             ========================================================= */}
-        <View style={styles.examHeroCard}>
-          <View style={styles.examHeroLeft}>
-            <Text style={styles.examTag}>Hitung mundur ujian</Text>
-            <Text style={styles.examTitle}>
-              {nearestExam && nearestExam.title.length > 1
-                ? `${nearestExam.title},\n${nearestExam.daysLeft} hari lagi`
-                : 'PTS Matematika Wajib,\n3 hari lagi'}
-            </Text>
-            <TouchableOpacity
-              style={styles.reviewBtn}
-              onPress={() => onNavigateTab && onNavigateTab('Fokus')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.reviewBtnText}>Review materi</Text>
-            </TouchableOpacity>
-          </View>
+        {nearestExam ? (
+          <View style={styles.examHeroCard}>
+            <View style={styles.examHeroLeft}>
+              <Text style={styles.examTag}>Hitung mundur ujian</Text>
+              <Text style={styles.examTitle} numberOfLines={2}>
+                {nearestExam.subject?.name
+                  ? `${nearestExam.subject.name} - ${nearestExam.title}`
+                  : nearestExam.title}
+                {'\n'}
+                {nearestExam.daysLeft > 0 ? `${nearestExam.daysLeft} hari lagi` : 'Hari ini!'}
+              </Text>
+              <TouchableOpacity
+                style={styles.reviewBtn}
+                onPress={() => onNavigateTab && onNavigateTab('Fokus')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.reviewBtnText}>Review materi</Text>
+              </TouchableOpacity>
+            </View>
 
-          <Image
-            source={require('../../../assets/senang.png')}
-            style={styles.heroMascotImg}
-            resizeMode="contain"
-          />
-        </View>
+            <Image
+              source={require('../../../assets/senang.png')}
+              style={styles.heroMascotImg}
+              resizeMode="contain"
+            />
+          </View>
+        ) : null}
 
         {/* =========================================================
             4. JADWAL HARI INI
@@ -147,103 +173,90 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionLabel}>Jadwal hari ini</Text>
           <TouchableOpacity onPress={() => onNavigateTab && onNavigateTab('Jadwal')}>
-            <Text style={styles.sectionDate}>Kamis, 30 Okt</Text>
+            <Text style={styles.sectionDate}>{currentDateStr}</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.whiteCardBox}>
-          {/* Item 1: Fisika */}
-          <TouchableOpacity
-            style={styles.scheduleRow}
-            onPress={() => onNavigateTab && onNavigateTab('Jadwal')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.subjectIconBox, { backgroundColor: '#DBEAFE' }]}>
-              <Text style={[styles.subjectInitial, { color: '#1D4ED8' }]}>F</Text>
-            </View>
-            <Text style={styles.subjectName}>Fisika</Text>
-            <Text style={styles.subjectTime}>07:30</Text>
-          </TouchableOpacity>
-
-          {/* Item 2: Kimia */}
-          <TouchableOpacity
-            style={styles.scheduleRow}
-            onPress={() => onNavigateTab && onNavigateTab('Jadwal')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.subjectIconBox, { backgroundColor: '#FFE8D1' }]}>
-              <Text style={[styles.subjectInitial, { color: '#9A3412' }]}>K</Text>
-            </View>
-            <Text style={styles.subjectName}>Kimia</Text>
-            <Text style={styles.subjectTime}>09:00</Text>
-          </TouchableOpacity>
-
-          {/* Item 3: Bahasa Indonesia */}
-          <TouchableOpacity
-            style={[styles.scheduleRow, { borderBottomWidth: 0 }]}
-            onPress={() => onNavigateTab && onNavigateTab('Jadwal')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.subjectIconBox, { backgroundColor: '#E0F2F1' }]}>
-              <Text style={[styles.subjectInitial, { color: '#115E59' }]}>B</Text>
-            </View>
-            <Text style={styles.subjectName}>Bahasa Indonesia</Text>
-            <Text style={styles.subjectTime}>11:00</Text>
-          </TouchableOpacity>
-        </View>
+        {todaySchedules.length > 0 ? (
+          <View style={styles.whiteCardBox}>
+            {todaySchedules.map((sch, idx) => {
+              const isLast = idx === todaySchedules.length - 1;
+              const initial = sch.subject?.initial || sch.subject?.name?.charAt(0) || 'M';
+              const bgColor = sch.subject?.bgColor || '#DBEAFE';
+              const color = sch.subject?.color || '#1D4ED8';
+              return (
+                <TouchableOpacity
+                  key={sch.id}
+                  style={[styles.scheduleRow, isLast && { borderBottomWidth: 0 }]}
+                  onPress={() => onNavigateTab && onNavigateTab('Jadwal')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.subjectIconBox, { backgroundColor: bgColor }]}>
+                    <Text style={[styles.subjectInitial, { color: color }]}>{initial}</Text>
+                  </View>
+                  <Text style={styles.subjectName}>{sch.subject?.name || 'Mata Pelajaran'}</Text>
+                  <Text style={styles.subjectTime}>{sch.startTime}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : (
+          <View style={styles.emptyCardBox}>
+            <Text style={styles.emptyCardText}>Belum ada jadwal mata pelajaran hari ini</Text>
+          </View>
+        )}
 
         {/* =========================================================
             5. TUGAS PRIORITAS
             ========================================================= */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionLabel}>Tugas prioritas</Text>
-          <Text style={styles.taskCountBadge}>{activeTasks.length || 2} tugas</Text>
+          <Text style={styles.taskCountBadge}>{activeTasks.length} tugas</Text>
         </View>
 
-        <View style={styles.whiteCardBoxPadded}>
-          {/* Task 1: Latihan Fisika GLBB */}
-          <View style={styles.taskPriorityRow}>
-            <View style={[styles.subjectIconBox, { backgroundColor: '#DBEAFE' }]}>
-              <Text style={[styles.subjectInitial, { color: '#1D4ED8' }]}>F</Text>
-            </View>
-            <TouchableOpacity
-              style={{ flex: 1 }}
-              onPress={() => {
-                if (tasks.length > 0) setSelectedTask(tasks[0]);
-              }}
-            >
-              <Text style={styles.taskTitleText}>Latihan Fisika GLBB</Text>
-              <Text style={styles.taskDeadlineText}>Besok, 23:59</Text>
-            </TouchableOpacity>
+        {activeTasks.length > 0 ? (
+          <View style={styles.whiteCardBoxPadded}>
+            {activeTasks.slice(0, 3).map((t, idx) => {
+              const isLast = idx === Math.min(activeTasks.length, 3) - 1;
+              const initial = t.title.charAt(0).toUpperCase() || 'T';
+              return (
+                <View
+                  key={t.id}
+                  style={[
+                    styles.taskPriorityRow,
+                    isLast && { borderBottomWidth: 0, paddingBottom: 0 },
+                  ]}
+                >
+                  <View style={[styles.subjectIconBox, { backgroundColor: '#DBEAFE' }]}>
+                    <Text style={[styles.subjectInitial, { color: '#1D4ED8' }]}>{initial}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={{ flex: 1 }}
+                    onPress={() => setSelectedTask(t)}
+                  >
+                    <Text style={styles.taskTitleText} numberOfLines={1}>{t.title}</Text>
+                    <Text style={styles.taskDeadlineText}>{t.deadlineDate || 'Hari ini'}</Text>
+                  </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.cicilBtn}
-              onPress={() => onNavigateTab && onNavigateTab('Fokus')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.cicilBtnText}>Cicil</Text>
-            </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.cicilBtn}
+                    onPress={() => {
+                      dispatch(setActiveTask({ taskId: t.id }));
+                      onNavigateTab && onNavigateTab('Fokus');
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.cicilBtnText}>Cicil</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
           </View>
-
-          {/* Task 2: Rangkuman Sejarah Bab 4 */}
-          <TouchableOpacity
-            style={[styles.taskPriorityRow, { borderBottomWidth: 0, paddingBottom: 0 }]}
-            onPress={() => {
-              if (tasks.length > 1) setSelectedTask(tasks[1]);
-              else if (tasks.length > 0) setSelectedTask(tasks[0]);
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.subjectIconBox, { backgroundColor: '#EDE9FE' }]}>
-              <Text style={[styles.subjectInitial, { color: '#5B21B6' }]}>S</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.taskTitleText}>Rangkuman Sejarah Bab 4</Text>
-              <Text style={styles.taskDeadlineText}>2 hari lagi</Text>
-            </View>
-            <ChevronRight color="#4A5670" size={18} strokeWidth={2.2} />
-          </TouchableOpacity>
-        </View>
+        ) : (
+          <View style={styles.emptyCardBox}>
+            <Text style={styles.emptyCardText}>Semua tugas tuntas! Belum ada tugas pending 🎉</Text>
+          </View>
+        )}
 
         {/* =========================================================
             6. QUICK ACTION: + Tambah Catatan Cepat
@@ -267,7 +280,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
           if (onNavigateTab) onNavigateTab('Fokus');
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -275,7 +288,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F3F6FA', // Exact template background
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -515,5 +527,21 @@ const styles = StyleSheet.create({
     color: '#0F1B33',
     fontWeight: '700',
     fontSize: 14,
+  },
+  emptyCardBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#EDF1F7',
+  },
+  emptyCardText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
