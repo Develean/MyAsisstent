@@ -7,52 +7,63 @@ import {
   SafeAreaView,
   ScrollView,
   TextInput,
-  Alert,
   Platform,
   StatusBar,
+  Alert,
+  Modal,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { useAppSelector, useAppDispatch } from '../../store/store';
 import {
   setDuration,
-  setTimerMode,
   setCustomDuration,
   togglePlayPause,
   resetTimer,
   tick,
-  clearActiveTask,
   setActiveTask,
 } from './focusSlice';
+import {
+  toggleSubtaskCompletion,
+  addSubtask,
+  TaskWithSubtasks,
+} from '../tasks/taskSlice';
 import { addExp } from '../user/userSlice';
 import {
   Play,
   Pause,
-  RotateCcw,
-  CheckCircle,
-  Clock,
+  Square,
   Sparkles,
-  Sliders,
-  Timer,
   ChevronDown,
   X,
+  Check,
 } from 'lucide-react-native';
-
-const POMODORO_PRESETS = [
-  { label: '25m Fokus', minutes: 25, type: 'focus' },
-  { label: '50m Deep Work', minutes: 50, type: 'focus' },
-  { label: '5m Istirahat', minutes: 5, type: 'break' },
-  { label: '15m Istirahat Panjang', minutes: 15, type: 'break' },
-];
-
-const CUSTOM_QUICK_CHIPS = [10, 15, 30, 45, 60, 90, 120];
 
 export const FocusScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const focus = useAppSelector((state) => state.focus);
   const tasks = useAppSelector((state) => state.tasks.tasks);
+  const subjects = useAppSelector((state) => state.schedule.subjects);
 
-  const [customInputMins, setCustomInputMins] = useState('');
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [customInputText, setCustomInputText] = useState('');
   const [isTaskPickerOpen, setIsTaskPickerOpen] = useState(false);
   const [sessionCompletedCelebration, setSessionCompletedCelebration] = useState(false);
+
+  const getTaskSubjectName = (task?: TaskWithSubtasks) => {
+    if (!task) return 'Fisika';
+    if (task.subjectId) {
+      const s = subjects.find((sub) => sub.id === task.subjectId);
+      if (s) return s.name;
+    }
+    const lower = task.title.toLowerCase();
+    if (lower.includes('fisika')) return 'Fisika';
+    if (lower.includes('matematika') || lower.includes('mtk')) return 'Matematika';
+    if (lower.includes('biologi')) return 'Biologi';
+    if (lower.includes('sejarah')) return 'Sejarah';
+    if (lower.includes('kimia')) return 'Kimia';
+    return 'Umum';
+  };
 
   // Timer Tick Effect
   useEffect(() => {
@@ -70,277 +81,383 @@ export const FocusScreen: React.FC = () => {
   // Handle session completion reward
   useEffect(() => {
     if (focus.remainingSeconds === 0 && !focus.isRunning) {
-      // Award EXP for completing a focus session
       dispatch(addExp(10));
       setSessionCompletedCelebration(true);
       setTimeout(() => setSessionCompletedCelebration(false), 4500);
     }
   }, [focus.remainingSeconds, focus.isRunning, dispatch]);
 
+  // Active task selection
+  const activeTask =
+    tasks.find((t) => t.id === focus.activeTaskId) ||
+    tasks.find((t) => !t.isCompleted) ||
+    tasks[0];
+
+  const subtasks = activeTask?.subtasks || [
+    { id: 1, taskId: 1, title: 'Baca rumus GLB & GLBB (hal 42)', isCompleted: true, orderIdx: 0 },
+    { id: 2, taskId: 1, title: 'Kerjakan latihan no 1-5 halaman 45', isCompleted: false, orderIdx: 1 },
+    { id: 3, taskId: 1, title: 'Buat rangkuman grafik v-t di buku', isCompleted: false, orderIdx: 2 },
+  ];
+
+  const completedSubtasksCount = subtasks.filter((s) => s.isCompleted).length;
+  const totalSubtasksCount = subtasks.length;
+
   // Format mm:ss
   const minutes = Math.floor(focus.remainingSeconds / 60);
   const seconds = focus.remainingSeconds % 60;
   const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-  // Calculate progress percent
-  const totalSeconds = focus.durationMinutes * 60;
-  const progressPercent = Math.max(
-    0,
-    Math.min(100, Math.round(((totalSeconds - focus.remainingSeconds) / totalSeconds) * 100))
-  );
+  // Calculate circular progress
+  const totalSeconds = (focus.durationMinutes || 25) * 60;
+  const progressRatio = totalSeconds > 0
+    ? Math.max(0, Math.min(1, (totalSeconds - focus.remainingSeconds) / totalSeconds))
+    : 0;
+  const circumference = 2 * Math.PI * 100; // r = 100
+  const strokeDashoffset = circumference * (1 - progressRatio);
 
-  // Find linked task if any
-  const linkedTask = tasks.find((t) => t.id === focus.activeTaskId);
-  const activePendingTasks = tasks.filter((t) => !t.isCompleted);
+  const handleToggleSubtask = (subtaskId: number) => {
+    if (activeTask) {
+      dispatch(toggleSubtaskCompletion({ taskId: activeTask.id, subtaskId }));
+      dispatch(addExp(2));
+    }
+  };
 
-  const handleApplyCustomInput = () => {
-    const val = parseInt(customInputMins, 10);
+  const handleAddNewSubtask = () => {
+    if (!newSubtaskTitle.trim()) return;
+    if (activeTask) {
+      dispatch(addSubtask({ taskId: activeTask.id, title: newSubtaskTitle.trim() }));
+      setNewSubtaskTitle('');
+    } else {
+      Alert.alert('Info', 'Pilih tugas terlebih dahulu untuk menambahkan subtask.');
+    }
+  };
+
+  const handleApplyCustomMinutes = () => {
+    const val = parseInt(customInputText, 10);
     if (isNaN(val) || val <= 0 || val > 180) {
-      Alert.alert('Durasi Tidak Valid', 'Masukkan angka antara 1 sampai 180 menit.');
+      Alert.alert('Durasi Tidak Valid', 'Masukkan angka durasi antara 1 sampai 180 menit.');
       return;
     }
     dispatch(setCustomDuration(val));
-    setCustomInputMins('');
+    setIsCustomModalOpen(false);
+    setCustomInputText('');
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header */}
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header: Mode fokus (Centered clean title) */}
         <View style={styles.header}>
-          <Text style={styles.title}>Mode Timer Fokus</Text>
-          <Text style={styles.subtitle}>
-            Fokus belajar tanpa distraksi dan kumpulkan EXP reward (+10 EXP)
-          </Text>
+          <Text style={styles.title}>Mode fokus</Text>
         </View>
 
         {/* Celebration Banner when timer finishes */}
         {sessionCompletedCelebration && (
           <View style={styles.celebrationBanner}>
             <Sparkles size={18} color="#059669" />
-            <View style={{ flex: 1, marginLeft: 8 }}>
-              <Text style={styles.celebrationTitle}>Sesi Fokus Berhasil Diselesaikan! 🎉</Text>
-              <Text style={styles.celebrationDesc}>
-                Kamu mendapat +10 EXP! Istirahatkan mata sejenak sebelum lanjut ya.
-              </Text>
-            </View>
+            <Text style={styles.celebrationText}>
+              Sesi Fokus Tuntas! Kamu mendapatkan +10 EXP 🎉
+            </Text>
           </View>
         )}
 
-        {/* Mode Selector Tabs (Pomodoro vs Custom) */}
-        <View style={styles.tabSelector}>
-          <TouchableOpacity
-            style={[styles.tabBtn, focus.timerMode === 'pomodoro' && styles.tabBtnActive]}
-            onPress={() => {
-              dispatch(setTimerMode('pomodoro'));
-              dispatch(setDuration(25));
-            }}
-          >
-            <Timer
-              size={14}
-              color={focus.timerMode === 'pomodoro' ? '#FFFFFF' : '#64748B'}
+        {/* Card: Sedang dikerjakan (Task Card from Image) */}
+        <TouchableOpacity
+          style={styles.taskCard}
+          activeOpacity={0.9}
+          onPress={() => setIsTaskPickerOpen(true)}
+        >
+          <View style={styles.taskBadgeBox}>
+            <Text style={styles.taskBadgeText}>
+              {getTaskSubjectName(activeTask).charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.taskCardLabel}>Sedang dikerjakan</Text>
+            <Text style={styles.taskCardTitle} numberOfLines={1}>
+              {activeTask?.title || 'Latihan Fisika GLBB'}
+            </Text>
+          </View>
+          <ChevronDown size={18} color="#4A5670" />
+        </TouchableOpacity>
+
+        {/* Circular Timer Ring (Exact styling from Image) */}
+        <View style={styles.timerRingContainer}>
+          <Svg width={240} height={240} viewBox="0 0 240 240" style={styles.timerSvg}>
+            {/* Background Track Circle */}
+            <Circle
+              cx={120}
+              cy={120}
+              r={100}
+              stroke="#DCE5F2"
+              strokeWidth={16}
+              fill="none"
             />
+            {/* Blue Progress Stroke */}
+            <Circle
+              cx={120}
+              cy={120}
+              r={100}
+              stroke="#2563EB"
+              strokeWidth={16}
+              fill="none"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              transform="rotate(-90 120 120)"
+            />
+          </Svg>
+          <View style={styles.timerCenterTextContainer}>
+            <Text style={styles.timerDigits}>{timeString}</Text>
+            <Text style={styles.timerSubLabel}>
+              dari {focus.durationMinutes || 25} menit
+            </Text>
+          </View>
+        </View>
+
+        {/* Duration Chips (25 mnt / 50 mnt / Kustom) */}
+        <View style={styles.presetChipsRow}>
+          <TouchableOpacity
+            style={[
+              styles.presetChip,
+              focus.durationMinutes === 25 && styles.presetChipActive,
+            ]}
+            onPress={() => dispatch(setDuration(25))}
+            activeOpacity={0.8}
+          >
             <Text
               style={[
-                styles.tabBtnText,
-                focus.timerMode === 'pomodoro' && styles.tabBtnTextActive,
+                styles.presetChipText,
+                focus.durationMinutes === 25 && styles.presetChipTextActive,
               ]}
             >
-              Pomodoro
+              25 mnt
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabBtn, focus.timerMode === 'custom' && styles.tabBtnActive]}
-            onPress={() => {
-              dispatch(setTimerMode('custom'));
-              dispatch(setCustomDuration(30));
-            }}
+            style={[
+              styles.presetChip,
+              focus.durationMinutes === 50 && styles.presetChipActive,
+            ]}
+            onPress={() => dispatch(setDuration(50))}
+            activeOpacity={0.8}
           >
-            <Sliders
-              size={14}
-              color={focus.timerMode === 'custom' ? '#FFFFFF' : '#64748B'}
-            />
             <Text
               style={[
-                styles.tabBtnText,
-                focus.timerMode === 'custom' && styles.tabBtnTextActive,
+                styles.presetChipText,
+                focus.durationMinutes === 50 && styles.presetChipTextActive,
               ]}
             >
-              Timer Kustom
+              50 mnt
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.presetChip,
+              focus.durationMinutes !== 25 &&
+                focus.durationMinutes !== 50 &&
+                styles.presetChipActive,
+            ]}
+            onPress={() => setIsCustomModalOpen(true)}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.presetChipText,
+                focus.durationMinutes !== 25 &&
+                  focus.durationMinutes !== 50 &&
+                  styles.presetChipTextActive,
+              ]}
+            >
+              {focus.durationMinutes !== 25 && focus.durationMinutes !== 50
+                ? `${focus.durationMinutes} mnt`
+                : 'Kustom'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Presets based on mode */}
-        {focus.timerMode === 'pomodoro' ? (
-          <View style={styles.presetsGrid}>
-            {POMODORO_PRESETS.map((p) => {
-              const isSelected = focus.durationMinutes === p.minutes;
-              return (
-                <TouchableOpacity
-                  key={p.label}
-                  style={[
-                    styles.presetCard,
-                    isSelected && styles.presetCardActive,
-                    p.type === 'break' && styles.presetCardBreak,
-                    isSelected && p.type === 'break' && styles.presetCardBreakActive,
-                  ]}
-                  onPress={() => dispatch(setDuration(p.minutes))}
-                >
-                  <Text
-                    style={[
-                      styles.presetLabel,
-                      isSelected && styles.presetLabelActive,
-                      p.type === 'break' && { color: '#059669' },
-                      isSelected && p.type === 'break' && { color: '#FFFFFF' },
-                    ]}
-                  >
-                    {p.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ) : (
-          <View style={styles.customSection}>
-            <Text style={styles.customSubtitle}>Pilih Durasi Cepat atau Ketik Menit Bebas:</Text>
-            {/* Quick Chips */}
-            <View style={styles.chipsRow}>
-              {CUSTOM_QUICK_CHIPS.map((mins) => {
-                const isSelected = focus.durationMinutes === mins;
-                return (
-                  <TouchableOpacity
-                    key={mins}
-                    style={[styles.chip, isSelected && styles.chipActive]}
-                    onPress={() => dispatch(setCustomDuration(mins))}
-                  >
-                    <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                      {mins}m
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+        {/* Action Buttons (Pause / Play & Stop as in Image) */}
+        <View style={styles.actionButtonsRow}>
+          {/* Big Blue Play / Pause Button: 76x76px */}
+          <TouchableOpacity
+            style={styles.mainPlayPauseButton}
+            onPress={() => dispatch(togglePlayPause())}
+            activeOpacity={0.85}
+          >
+            {focus.isRunning ? (
+              <Pause size={28} color="#FFFFFF" fill="#FFFFFF" />
+            ) : (
+              <Play size={28} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 3 }} />
+            )}
+          </TouchableOpacity>
 
-            {/* Manual Minutes Input */}
-            <View style={styles.customInputRow}>
-              <TextInput
-                style={styles.customInput}
-                placeholder="Durasi bebas (menit)..."
-                placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
-                value={customInputMins}
-                onChangeText={setCustomInputMins}
-              />
+          {/* Secondary Stop / Reset Button: 56x56px */}
+          <TouchableOpacity
+            style={styles.secondaryStopButton}
+            onPress={() => {
+              dispatch(resetTimer());
+            }}
+            activeOpacity={0.8}
+          >
+            <Square size={20} color="#0F1B33" fill="#0F1B33" />
+          </TouchableOpacity>
+        </View>
+
+        {/* BOX SUBTASK (SESUAI PERMINTAAN PENGGUNA) */}
+        <View style={styles.subtaskCard}>
+          <View style={styles.subtaskHeaderRow}>
+            <Text style={styles.subtaskTitle}>Subtask / Langkah Kerja</Text>
+            <View style={styles.subtaskProgressBadge}>
+              <Text style={styles.subtaskProgressText}>
+                {completedSubtasksCount} dari {totalSubtasksCount} tuntas
+              </Text>
+            </View>
+          </View>
+
+          {/* Subtask Item List */}
+          <View style={styles.subtaskList}>
+            {subtasks.map((item) => (
               <TouchableOpacity
-                style={styles.applyBtn}
-                onPress={handleApplyCustomInput}
+                key={item.id}
+                style={styles.subtaskItemRow}
+                onPress={() => handleToggleSubtask(item.id)}
+                activeOpacity={0.8}
               >
-                <Text style={styles.applyBtnText}>Terapkan</Text>
+                <View
+                  style={[
+                    styles.checkboxBox,
+                    item.isCompleted && styles.checkboxBoxChecked,
+                  ]}
+                >
+                  {item.isCompleted && <Check size={13} color="#FFFFFF" strokeWidth={3} />}
+                </View>
+                <Text
+                  style={[
+                    styles.subtaskItemText,
+                    item.isCompleted && styles.subtaskItemTextDone,
+                  ]}
+                >
+                  {item.title}
+                </Text>
               </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Large Timer Dial Card */}
-        <View style={styles.timerDialCard}>
-          <View style={styles.progressRingWrapper}>
-            <View style={styles.timerCircle}>
-              <Text style={styles.timerText}>{timeString}</Text>
-              <Text style={styles.timerSubText}>
-                {focus.isRunning ? '🔥 Sedang Berjalan...' : 'Siap Mulai'}
-              </Text>
-              {totalSeconds > 0 && (
-                <Text style={styles.progressPercentText}>{progressPercent}% selesai</Text>
-              )}
-            </View>
+            ))}
           </View>
 
-          {/* Controls */}
-          <View style={styles.controlsRow}>
-            <TouchableOpacity style={styles.resetBtn} onPress={() => dispatch(resetTimer())}>
-              <RotateCcw size={22} color="#64748B" />
-            </TouchableOpacity>
-
+          {/* Tambah Subtask Input Form */}
+          <View style={styles.addSubtaskRow}>
+            <TextInput
+              style={styles.subtaskInput}
+              placeholder="Tambah langkah baru..."
+              placeholderTextColor="#94A3B8"
+              value={newSubtaskTitle}
+              onChangeText={setNewSubtaskTitle}
+              onSubmitEditing={handleAddNewSubtask}
+              returnKeyType="done"
+            />
             <TouchableOpacity
-              style={[styles.playBtn, focus.isRunning && styles.playBtnActive]}
-              onPress={() => dispatch(togglePlayPause())}
+              style={styles.addSubtaskBtn}
+              onPress={handleAddNewSubtask}
+              activeOpacity={0.8}
             >
-              {focus.isRunning ? (
-                <Pause size={28} color="#FFFFFF" />
-              ) : (
-                <Play size={28} color="#FFFFFF" style={{ marginLeft: 3 }} />
-              )}
-            </TouchableOpacity>
-
-            <View style={{ width: 44 }} />
-          </View>
-        </View>
-
-        {/* Target Task Card */}
-        <View style={styles.taskTargetCard}>
-          <View style={styles.taskTargetHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <CheckCircle size={16} color="#2563EB" />
-              <Text style={styles.taskTargetTitle}>Tugas yang Difokuskan</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.changeTaskBtn}
-              onPress={() => setIsTaskPickerOpen(!isTaskPickerOpen)}
-            >
-              <Text style={styles.changeTaskBtnText}>
-                {linkedTask ? 'Ganti' : '+ Pilih Tugas'}
-              </Text>
-              <ChevronDown size={14} color="#2563EB" />
+              <Text style={styles.addSubtaskBtnText}>+ Tambah</Text>
             </TouchableOpacity>
           </View>
-
-          {linkedTask ? (
-            <View style={styles.selectedTaskRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.taskTargetDesc}>{linkedTask.title}</Text>
-                {linkedTask.subtasks.length > 0 && (
-                  <Text style={styles.taskTargetSubinfo}>
-                    {linkedTask.subtasks.filter((s) => s.isCompleted).length}/
-                    {linkedTask.subtasks.length} subtask selesai
-                  </Text>
-                )}
-              </View>
-              <TouchableOpacity onPress={() => dispatch(clearActiveTask())}>
-                <X size={16} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <Text style={styles.taskTargetPlaceholder}>
-              Belum ada tugas yang dikaitkan. Kamu bisa memilih tugas untuk memantau progres langsung selama sesi fokus.
-            </Text>
-          )}
-
-          {/* Task Picker Dropdown */}
-          {isTaskPickerOpen && (
-            <View style={styles.pickerBox}>
-              <Text style={styles.pickerHeader}>Pilih dari tugas yang belum tuntas:</Text>
-              {activePendingTasks.length === 0 ? (
-                <Text style={styles.pickerEmpty}>Tidak ada tugas pending.</Text>
-              ) : (
-                activePendingTasks.map((t) => (
-                  <TouchableOpacity
-                    key={t.id}
-                    style={styles.pickerItem}
-                    onPress={() => {
-                      dispatch(setActiveTask({ taskId: t.id }));
-                      setIsTaskPickerOpen(false);
-                    }}
-                  >
-                    <Text style={styles.pickerItemTitle}>{t.title}</Text>
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
-          )}
         </View>
       </ScrollView>
+
+      {/* Task Picker Modal */}
+      <Modal
+        visible={isTaskPickerOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsTaskPickerOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Pilih Tugas untuk Difokuskan</Text>
+              <TouchableOpacity onPress={() => setIsTaskPickerOpen(false)}>
+                <X size={20} color="#0F1B33" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 320 }}>
+              {tasks.map((t) => (
+                <TouchableOpacity
+                  key={t.id}
+                  style={[
+                    styles.taskOptionRow,
+                    activeTask?.id === t.id && styles.taskOptionRowSelected,
+                  ]}
+                  onPress={() => {
+                    dispatch(setActiveTask({ taskId: t.id }));
+                    setIsTaskPickerOpen(false);
+                  }}
+                >
+                  <Text style={styles.taskOptionSubject}>[{getTaskSubjectName(t)}]</Text>
+                  <Text style={styles.taskOptionTitle} numberOfLines={1}>
+                    {t.title}
+                  </Text>
+                  {t.isCompleted && (
+                    <Text style={styles.taskCompletedTag}>Selesai</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Custom Duration Modal */}
+      <Modal
+        visible={isCustomModalOpen}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setIsCustomModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Atur Durasi Kustom</Text>
+              <TouchableOpacity onPress={() => setIsCustomModalOpen(false)}>
+                <X size={20} color="#0F1B33" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSubtitle}>
+              Tentukan waktu sesi fokusmu (1 - 180 menit):
+            </Text>
+            <TextInput
+              style={styles.customMinutesInput}
+              keyboardType="number-pad"
+              placeholder="Contoh: 35"
+              placeholderTextColor="#94A3B8"
+              value={customInputText}
+              onChangeText={setCustomInputText}
+            />
+            <View style={styles.quickMinutesRow}>
+              {[15, 30, 45, 60, 90].map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  style={styles.quickMinChip}
+                  onPress={() => setCustomInputText(m.toString())}
+                >
+                  <Text style={styles.quickMinText}>{m}m</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={styles.applyCustomBtn}
+              onPress={handleApplyCustomMinutes}
+            >
+              <Text style={styles.applyCustomBtnText}>Terapkan Durasi</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -352,337 +469,357 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0,
   },
   container: {
-    padding: 18,
-    paddingBottom: 90,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 100,
   },
   header: {
-    marginBottom: 16,
+    alignItems: 'center',
+    paddingVertical: 6,
+    marginBottom: 4,
   },
   title: {
-    fontSize: 22,
+    fontSize: 17,
     fontWeight: '800',
     color: '#0F1B33',
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-    fontWeight: '500',
+    textAlign: 'center',
   },
   celebrationBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1.5,
-    borderColor: '#A7F3D0',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 16,
-  },
-  celebrationTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#065F46',
-  },
-  celebrationDesc: {
-    fontSize: 11,
-    color: '#047857',
-    marginTop: 2,
-  },
-  tabSelector: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 14,
-    gap: 4,
-  },
-  tabBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 9,
-    borderRadius: 10,
-    gap: 6,
-  },
-  tabBtnActive: {
-    backgroundColor: '#2563EB',
-  },
-  tabBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  tabBtnTextActive: {
-    color: '#FFFFFF',
-  },
-  presetsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 16,
-  },
-  presetCard: {
-    flex: 1,
-    minWidth: '46%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#DCFCE7',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  presetCardActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
-  },
-  presetCardBreak: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
-  },
-  presetCardBreakActive: {
-    backgroundColor: '#059669',
-    borderColor: '#059669',
-  },
-  presetLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  presetLabelActive: {
-    color: '#FFFFFF',
-  },
-  customSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 16,
-  },
-  customSubtitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#475569',
+    borderColor: '#86EFAC',
+    borderRadius: 14,
+    padding: 10,
     marginBottom: 10,
   },
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 12,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  chipActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
-  },
-  chipText: {
+  celebrationText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#64748B',
-  },
-  chipTextActive: {
-    color: '#FFFFFF',
-  },
-  customInputRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  customInput: {
+    color: '#15803D',
     flex: 1,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#0F1B33',
   },
-  applyBtn: {
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  applyBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  timerDialCard: {
+  taskCard: {
+    marginTop: 10,
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
+    gap: 14,
+    shadowColor: '#0F1B33',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
     elevation: 2,
-    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#EBF0F7',
   },
-  progressRingWrapper: {
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: '#EFF6FF',
+  taskBadgeBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 8,
-    borderColor: '#DBEAFE',
   },
-  timerCircle: {
+  taskBadgeText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1D4ED8',
+  },
+  taskCardLabel: {
+    fontSize: 12,
+    color: '#4A5670',
+    fontWeight: '600',
+  },
+  taskCardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F1B33',
+    marginTop: 2,
+  },
+  timerRingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+    height: 240,
+  },
+  timerSvg: {
+    position: 'absolute',
+  },
+  timerCenterTextContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timerDigits: {
+    fontSize: 52,
+    fontWeight: '800',
+    letterSpacing: -1.5,
+    color: '#0F1B33',
+    lineHeight: 60,
+  },
+  timerSubLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4A5670',
+    marginTop: 4,
+  },
+  presetChipsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 12,
+  },
+  presetChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#E3EAF4',
+    minWidth: 72,
     alignItems: 'center',
   },
-  timerText: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: '#1E3A8A',
-    letterSpacing: 1,
+  presetChipActive: {
+    backgroundColor: '#2563EB',
   },
-  timerSubText: {
+  presetChipText: {
     fontSize: 13,
-    color: '#3B82F6',
     fontWeight: '700',
-    marginTop: 4,
+    color: '#4A5670',
   },
-  progressPercentText: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-    marginTop: 4,
+  presetChipTextActive: {
+    color: '#FFFFFF',
   },
-  controlsRow: {
+  actionButtonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 24,
-    gap: 20,
+    gap: 18,
+    marginTop: 18,
   },
-  resetBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playBtn: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+  mainPlayPauseButton: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  playBtnActive: {
-    backgroundColor: '#DC2626',
-    shadowColor: '#DC2626',
+  secondaryStopButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#E3EAF4',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  taskTargetCard: {
+  subtaskCard: {
+    marginTop: 20,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 24,
+    padding: 18,
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 14,
+    borderColor: '#EBF0F7',
   },
-  taskTargetHeader: {
+  subtaskHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  taskTargetTitle: {
-    fontSize: 13,
+  subtaskTitle: {
+    fontSize: 14,
     fontWeight: '800',
     color: '#0F1B33',
   },
-  changeTaskBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  changeTaskBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#2563EB',
-  },
-  selectedTaskRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  taskTargetDesc: {
-    fontSize: 14,
-    color: '#1E293B',
-    fontWeight: '700',
-  },
-  taskTargetSubinfo: {
+  subtaskProgressBadge: {
     fontSize: 11,
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  subtaskProgressText: {
+    fontSize: 11,
+    fontWeight: '700',
     color: '#2563EB',
-    marginTop: 2,
-    fontWeight: '600',
   },
-  taskTargetPlaceholder: {
-    fontSize: 12,
-    color: '#64748B',
-    lineHeight: 18,
-  },
-  pickerBox: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+  subtaskList: {
     gap: 6,
   },
-  pickerHeader: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
-    marginBottom: 4,
+  subtaskItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F6FA',
   },
-  pickerEmpty: {
-    fontSize: 12,
-    color: '#94A3B8',
-    fontStyle: 'italic',
+  checkboxBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  pickerItem: {
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  checkboxBoxChecked: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
   },
-  pickerItemTitle: {
+  subtaskItemText: {
     fontSize: 13,
-    color: '#0F1B33',
     fontWeight: '600',
+    color: '#0F1B33',
+    flex: 1,
+  },
+  subtaskItemTextDone: {
+    color: '#94A3B8',
+    textDecorationLine: 'line-through',
+  },
+  addSubtaskRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  subtaskInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#DCE5F2',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    fontWeight: '600',
+    backgroundColor: '#F8FAFC',
+    color: '#0F1B33',
+  },
+  addSubtaskBtn: {
+    height: 40,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addSubtaskBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 27, 51, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 36,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F1B33',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#4A5670',
+    marginBottom: 10,
+  },
+  taskOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F6FA',
+  },
+  taskOptionRowSelected: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+  },
+  taskOptionSubject: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#2563EB',
+  },
+  taskOptionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F1B33',
+    flex: 1,
+  },
+  taskCompletedTag: {
+    fontSize: 11,
+    color: '#15803D',
+    fontWeight: '700',
+  },
+  customMinutesInput: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#DCE5F2',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    fontWeight: '700',
+    backgroundColor: '#F8FAFC',
+    color: '#0F1B33',
+    marginBottom: 12,
+  },
+  quickMinutesRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  quickMinChip: {
+    flex: 1,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#E3EAF4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickMinText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F1B33',
+  },
+  applyCustomBtn: {
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  applyCustomBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });
