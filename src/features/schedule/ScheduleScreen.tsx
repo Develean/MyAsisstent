@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,10 @@ import {
   Platform,
   StatusBar,
   Alert,
+  Modal,
 } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../../store/store';
-import { setSelectedDay, ScheduleWithSubject } from './scheduleSlice';
+import { setSelectedDay, setSelectedDate, ScheduleWithSubject } from './scheduleSlice';
 import { SubjectDetailModal } from './components/SubjectDetailModal';
 import { AddExamModal } from './components/AddExamModal';
 import {
@@ -21,24 +22,61 @@ import {
   Clock,
   Sparkles,
   BookOpen,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  RotateCcw,
 } from 'lucide-react-native';
 
-interface DayStripItem {
-  id: string;
+const INDONESIAN_MONTHS = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+];
+
+const INDONESIAN_MONTHS_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agt',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
+
+const INDONESIAN_DAYS_SHORT = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+const INDONESIAN_DAYS_FULL = [
+  'Minggu',
+  'Senin',
+  'Selasa',
+  'Rabu',
+  'Kamis',
+  'Jumat',
+  'Sabtu',
+];
+
+interface CalendarDayItem {
+  dateNum: number;
   dayShort: string;
   dayName: string;
-  dateNum: number;
-  hasDot?: boolean;
+  fullDateStr: string;
+  hasDot: boolean;
 }
-
-const WEEK_DAYS: DayStripItem[] = [
-  { id: 'sen', dayShort: 'Sen', dayName: 'Senin', dateNum: 26 },
-  { id: 'sel', dayShort: 'Sel', dayName: 'Selasa', dateNum: 27 },
-  { id: 'rab', dayShort: 'Rab', dayName: 'Rabu', dateNum: 28, hasDot: true },
-  { id: 'kam', dayShort: 'Kam', dayName: 'Kamis', dateNum: 29 },
-  { id: 'jum', dayShort: 'Jum', dayName: 'Jumat', dateNum: 30, hasDot: true },
-  { id: 'sab', dayShort: 'Sab', dayName: 'Sabtu', dateNum: 31 },
-];
 
 const DEFAULT_SCHEDULES_BY_DAY: Record<
   string,
@@ -81,6 +119,9 @@ const DEFAULT_SCHEDULES_BY_DAY: Record<
   Sabtu: [
     { id: 601, name: 'Ekstrakurikuler Robotik', room: 'Lab Komputer', startTime: '08:00', endTime: '10:00', initial: 'R', bg: '#DBEAFE', textColor: '#1D4ED8' },
     { id: 602, name: 'Pramuka Wajib', room: 'Aula Utama', startTime: '10:00', endTime: '12:00', initial: 'P', bg: '#FEF3C7', textColor: '#D97706' },
+  ],
+  Minggu: [
+    { id: 701, name: 'Istirahat & Belajar Mandiri', room: 'Di Rumah', startTime: '09:00', endTime: '11:00', initial: 'I', bg: '#DCFCE7', textColor: '#15803D' },
   ],
 };
 
@@ -189,6 +230,18 @@ const NOTES_BY_DAY: Record<
       textColor: '#1D4ED8',
     },
   ],
+  Minggu: [
+    {
+      id: 9,
+      subject: 'Review Mingguan',
+      title: 'Persiapan Pelajaran Hari Senin',
+      content: 'Cek perlengkapan seragam upacara dan PR yang belum tuntas.',
+      time: '19:00',
+      initial: 'R',
+      bg: '#DBEAFE',
+      textColor: '#1D4ED8',
+    },
+  ],
 };
 
 const getSubjectPalette = (name: string) => {
@@ -211,11 +264,68 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
   const schedules = useAppSelector((state) => state.schedule.schedules);
   const exams = useAppSelector((state) => state.schedule.exams);
 
+  // Month & Year State (Defaults to Oktober 2026 as master mockup)
+  const [selectedYear, setSelectedYear] = useState<number>(2026);
+  const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(9); // 0-indexed: 9 = Oktober
+  const [selectedDateNum, setSelectedDateNum] = useState<number>(30); // 30 Okt (Jumat)
+  const [isMonthPickerVisible, setIsMonthPickerVisible] = useState<boolean>(false);
+  const [pickerTempYear, setPickerTempYear] = useState<number>(2026);
+
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleWithSubject | null>(null);
   const [isExamModalVisible, setIsExamModalVisible] = useState(false);
 
-  // Active strip item
-  const currentStripDay = WEEK_DAYS.find((d) => d.dayName === selectedDay) || WEEK_DAYS[4]; // Default Jumat
+  const stripScrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+
+  // Calculate days in the selected month
+  const totalDaysInMonth = useMemo(() => {
+    return new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
+  }, [selectedYear, selectedMonthIndex]);
+
+  // Generate list of ALL days for the selected month
+  const monthDaysList = useMemo<CalendarDayItem[]>(() => {
+    const list: CalendarDayItem[] = [];
+    for (let d = 1; d <= totalDaysInMonth; d++) {
+      const dateObj = new Date(selectedYear, selectedMonthIndex, d);
+      const dayOfWeekIdx = dateObj.getDay();
+      const dayName = INDONESIAN_DAYS_FULL[dayOfWeekIdx];
+      const dayShort = INDONESIAN_DAYS_SHORT[dayOfWeekIdx];
+      const fullDateStr = `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+      // Check if this date has exams scheduled
+      const hasExamOnDate = exams.some(
+        (e) => e.examDate === fullDateStr
+      );
+
+      // Has dot indicator: exam date, or master mockup default (28 Okt)
+      const hasDot = hasExamOnDate || (selectedMonthIndex === 9 && d === 28);
+
+      list.push({
+        dateNum: d,
+        dayShort,
+        dayName,
+        fullDateStr,
+        hasDot,
+      });
+    }
+    return list;
+  }, [selectedYear, selectedMonthIndex, totalDaysInMonth, exams]);
+
+  // Auto scroll to active date when dateNum or month changes
+  useEffect(() => {
+    if (stripScrollViewRef.current) {
+      // Each day card has width 52px + 8px gap = 60px
+      const targetX = Math.max(0, (selectedDateNum - 1) * 60 - 100);
+      const timer = setTimeout(() => {
+        stripScrollViewRef.current?.scrollTo({ x: targetX, animated: true });
+      }, 120);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedDateNum, selectedMonthIndex, selectedYear]);
+
+  // Current active day item
+  const currentActiveDayItem =
+    monthDaysList.find((d) => d.dateNum === selectedDateNum) ||
+    monthDaysList[0];
 
   // Real DB schedules for the selected day
   const dbSchedulesForDay = schedules.filter((s) => s.dayOfWeek === selectedDay);
@@ -251,16 +361,54 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
     );
   };
 
-  const handleDaySelect = (dayItem: DayStripItem) => {
+  const handleDaySelect = (dayItem: CalendarDayItem) => {
+    setSelectedDateNum(dayItem.dateNum);
     dispatch(setSelectedDay(dayItem.dayName));
+    dispatch(setSelectedDate(dayItem.fullDateStr));
   };
 
-  const handleOpenAcademicCalendar = () => {
-    Alert.alert(
-      'Kalender Akademik',
-      'Semester Ganjil 2026/2027\n\n• PTS Semester: 2 - 7 November 2026\n• Remedial & Pengayaan: 10 - 15 November 2026\n• PAS Akhir Semester: 1 - 12 Desember 2026',
-      [{ text: 'Tutup', style: 'default' }]
-    );
+  const handleOpenMonthPicker = () => {
+    setPickerTempYear(selectedYear);
+    setIsMonthPickerVisible(true);
+  };
+
+  const handleSelectMonth = (monthIdx: number) => {
+    setSelectedMonthIndex(monthIdx);
+    setSelectedYear(pickerTempYear);
+
+    // Adjust selectedDateNum if exceeds days in new month
+    const newTotalDays = new Date(pickerTempYear, monthIdx + 1, 0).getDate();
+    const newDateNum = Math.min(selectedDateNum, newTotalDays);
+    setSelectedDateNum(newDateNum);
+
+    // Compute new day of week
+    const dateObj = new Date(pickerTempYear, monthIdx, newDateNum);
+    const dayName = INDONESIAN_DAYS_FULL[dateObj.getDay()];
+    const fullDateStr = `${pickerTempYear}-${String(monthIdx + 1).padStart(2, '0')}-${String(newDateNum).padStart(2, '0')}`;
+
+    dispatch(setSelectedDay(dayName));
+    dispatch(setSelectedDate(fullDateStr));
+
+    setIsMonthPickerVisible(false);
+  };
+
+  const handleResetToCurrentMonth = () => {
+    const now = new Date();
+    const nowYear = now.getFullYear();
+    const nowMonth = now.getMonth();
+    const nowDate = now.getDate();
+
+    setSelectedYear(nowYear);
+    setSelectedMonthIndex(nowMonth);
+    setSelectedDateNum(nowDate);
+
+    const dayName = INDONESIAN_DAYS_FULL[now.getDay()];
+    const fullDateStr = `${nowYear}-${String(nowMonth + 1).padStart(2, '0')}-${String(nowDate).padStart(2, '0')}`;
+
+    dispatch(setSelectedDay(dayName));
+    dispatch(setSelectedDate(fullDateStr));
+
+    setIsMonthPickerVisible(false);
   };
 
   return (
@@ -270,48 +418,60 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
         showsVerticalScrollIndicator={false}
       >
         {/* =========================================================
-            1. TOP BAR: Title "Jadwal" & Pill "Oktober 2026"
+            1. TOP BAR: Title "Jadwal" & Clickable Month Button
             ========================================================= */}
         <View style={styles.topHeaderRow}>
           <Text style={styles.screenTitle}>Jadwal</Text>
           <TouchableOpacity
             style={styles.calendarPillBtn}
-            onPress={handleOpenAcademicCalendar}
+            onPress={handleOpenMonthPicker}
             activeOpacity={0.8}
+            accessibilityLabel="Atur Bulan dan Tahun"
           >
-            <Text style={styles.calendarPillText}>Oktober 2026</Text>
+            <Calendar size={14} color="#0F1B33" style={{ marginRight: 6 }} />
+            <Text style={styles.calendarPillText}>
+              {INDONESIAN_MONTHS[selectedMonthIndex]} {selectedYear}
+            </Text>
+            <ChevronDown size={14} color="#0F1B33" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
 
         {/* =========================================================
-            2. WEEKLY DAY SELECTOR STRIP (Sen 26 s/d Sab 31)
+            2. ALL DAYS OF MONTH SELECTOR STRIP (Scrollable 1..31)
             ========================================================= */}
-        <View style={styles.weekStripRow}>
-          {WEEK_DAYS.map((dayItem) => {
-            const isActive = selectedDay === dayItem.dayName;
-            return (
-              <TouchableOpacity
-                key={dayItem.id}
-                style={[styles.stripCard, isActive && styles.stripCardActive]}
-                onPress={() => handleDaySelect(dayItem)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.stripDayName, isActive && styles.stripDayNameActive]}>
-                  {dayItem.dayShort}
-                </Text>
-                <Text style={[styles.stripDateNum, isActive && styles.stripDateNumActive]}>
-                  {dayItem.dateNum}
-                </Text>
-                {isActive ? (
-                  <View style={styles.activeWhiteDot} />
-                ) : dayItem.hasDot ? (
-                  <View style={styles.amberDot} />
-                ) : (
-                  <View style={styles.dotPlaceholder} />
-                )}
-              </TouchableOpacity>
-            );
-          })}
+        <View style={styles.weekStripWrapper}>
+          <ScrollView
+            ref={stripScrollViewRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.weekStripScrollContent}
+          >
+            {monthDaysList.map((dayItem) => {
+              const isActive = selectedDateNum === dayItem.dateNum;
+              return (
+                <TouchableOpacity
+                  key={dayItem.dateNum}
+                  style={[styles.stripCard, isActive && styles.stripCardActive]}
+                  onPress={() => handleDaySelect(dayItem)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.stripDayName, isActive && styles.stripDayNameActive]}>
+                    {dayItem.dayShort}
+                  </Text>
+                  <Text style={[styles.stripDateNum, isActive && styles.stripDateNumActive]}>
+                    {dayItem.dateNum}
+                  </Text>
+                  {isActive ? (
+                    <View style={styles.activeWhiteDot} />
+                  ) : dayItem.hasDot ? (
+                    <View style={styles.amberDot} />
+                  ) : (
+                    <View style={styles.dotPlaceholder} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
         {/* =========================================================
@@ -340,7 +500,8 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
             ========================================================= */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionDateText}>
-            {selectedDay}, {currentStripDay.dateNum} Okt
+            {currentActiveDayItem.dayName}, {currentActiveDayItem.dateNum}{' '}
+            {INDONESIAN_MONTHS_SHORT[selectedMonthIndex]}
           </Text>
           <Text style={styles.sectionCountText}>
             {dbSchedulesForDay.length > 0
@@ -393,7 +554,6 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
                   key={item.id}
                   style={[styles.timetablerow, isLast && styles.timetablerowLast]}
                   onPress={() => {
-                    // Create mock schedule object for modal
                     setSelectedSchedule({
                       id: item.id,
                       subjectId: item.id,
@@ -457,7 +617,8 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
             ========================================================= */}
         <View style={styles.notesSectionHeader}>
           <Text style={styles.notesHeaderTitle}>
-            Catatan {selectedDay}, {currentStripDay.dateNum} Okt
+            Catatan {currentActiveDayItem.dayName}, {currentActiveDayItem.dateNum}{' '}
+            {INDONESIAN_MONTHS_SHORT[selectedMonthIndex]}
           </Text>
           <View style={styles.notesCountBadge}>
             <Text style={styles.notesCountText}>{notesForDay.length} catatan</Text>
@@ -497,6 +658,101 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
           ))}
         </View>
       </ScrollView>
+
+      {/* =========================================================
+          MONTH & YEAR PICKER MODAL
+          ========================================================= */}
+      <Modal
+        visible={isMonthPickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsMonthPickerVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setIsMonthPickerVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.monthPickerCard}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <View style={styles.modalHeaderRow}>
+              <View style={styles.yearControlBox}>
+                <TouchableOpacity
+                  style={styles.yearArrowBtn}
+                  onPress={() => setPickerTempYear((prev) => prev - 1)}
+                  activeOpacity={0.7}
+                >
+                  <ChevronLeft size={20} color="#0F1B33" />
+                </TouchableOpacity>
+
+                <Text style={styles.pickerYearText}>{pickerTempYear}</Text>
+
+                <TouchableOpacity
+                  style={styles.yearArrowBtn}
+                  onPress={() => setPickerTempYear((prev) => prev + 1)}
+                  activeOpacity={0.7}
+                >
+                  <ChevronRight size={20} color="#0F1B33" />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setIsMonthPickerVisible(false)}
+                activeOpacity={0.7}
+              >
+                <X size={18} color="#4A5670" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.pickerInstructionText}>
+              Pilih bulan untuk melihat seluruh tanggal jadwal pelajaran:
+            </Text>
+
+            {/* Months 3x4 Grid */}
+            <View style={styles.monthsGrid}>
+              {INDONESIAN_MONTHS.map((monthName, idx) => {
+                const isSelected =
+                  idx === selectedMonthIndex && pickerTempYear === selectedYear;
+                return (
+                  <TouchableOpacity
+                    key={monthName}
+                    style={[
+                      styles.monthGridItem,
+                      isSelected && styles.monthGridItemActive,
+                    ]}
+                    onPress={() => handleSelectMonth(idx)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[
+                        styles.monthGridItemText,
+                        isSelected && styles.monthGridItemTextActive,
+                      ]}
+                    >
+                      {monthName}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Quick Reset to Today Button */}
+            <TouchableOpacity
+              style={styles.resetToTodayBtn}
+              onPress={handleResetToCurrentMonth}
+              activeOpacity={0.8}
+            >
+              <RotateCcw size={15} color="#2563EB" style={{ marginRight: 6 }} />
+              <Text style={styles.resetToTodayBtnText}>Kembali ke Hari Ini</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Subject Detail Modal */}
       <SubjectDetailModal
@@ -538,8 +794,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   calendarPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#E3EAF4',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 999,
   },
@@ -548,14 +806,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  weekStripRow: {
+  weekStripWrapper: {
     marginTop: 16,
+    marginHorizontal: -20, // stretch to screen edges for smooth scrolling
+  },
+  weekStripScrollContent: {
+    paddingHorizontal: 20,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 6,
+    gap: 8,
   },
   stripCard: {
-    flex: 1,
+    width: 52,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     paddingVertical: 10,
@@ -823,5 +1084,106 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     lineHeight: 18,
+  },
+
+  // Modal Styles
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 27, 51, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  monthPickerCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  yearControlBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  yearArrowBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerYearText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F1B33',
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerInstructionText: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  monthsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'space-between',
+  },
+  monthGridItem: {
+    width: '31%',
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  monthGridItemActive: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  monthGridItemText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F1B33',
+  },
+  monthGridItemTextActive: {
+    color: '#FFFFFF',
+  },
+  resetToTodayBtn: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+  },
+  resetToTodayBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563EB',
   },
 });
