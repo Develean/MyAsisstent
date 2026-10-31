@@ -54,7 +54,7 @@ export const FocusScreen: React.FC = () => {
 
   // Timer Tick Effect
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
     if (focus.isRunning) {
       interval = setInterval(() => {
         dispatch(tick());
@@ -346,7 +346,7 @@ export const FocusScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F3F6FA',
   },
   container: {
     padding: 18,

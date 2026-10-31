@@ -47,7 +47,7 @@ export const MascotPuppetView: React.FC<MascotPuppetViewProps> = ({ onExpReward 
 
   // Natural Organic Eye Blinking Loop
   useEffect(() => {
-    let blinkTimeout: NodeJS.Timeout;
+    let blinkTimeout: ReturnType<typeof setTimeout>;
     const scheduleNextBlink = () => {
       const delay = 3000 + Math.random() * 2500;
       blinkTimeout = setTimeout(() => {

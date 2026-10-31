@@ -7,26 +7,21 @@ import {
   Image,
   StyleSheet,
   SafeAreaView,
+  Platform,
+  Alert,
 } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../../store/store';
 import {
   TaskWithSubtasks,
   toggleTaskCompletion,
-  setFilter,
+  toggleSubtaskCompletion,
 } from '../tasks/taskSlice';
 import { addExp } from '../user/userSlice';
 import { TaskDetailModal } from '../tasks/components/TaskDetailModal';
 import {
-  Calendar,
-  CheckCircle2,
-  Circle,
   Flame,
-  Clock,
-  Plus,
-  Sparkles,
-  BookOpen,
-  CheckSquare,
-  Play,
+  User as UserIcon,
+  ChevronRight,
 } from 'lucide-react-native';
 
 interface HomeScreenProps {
@@ -38,308 +33,239 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.user);
   const tasks = useAppSelector((state) => state.tasks.tasks);
-  const filter = useAppSelector((state) => state.tasks.filter);
   const schedules = useAppSelector((state) => state.schedule.schedules);
+  const exams = useAppSelector((state) => state.schedule.exams);
 
   const [selectedTask, setSelectedTask] = useState<TaskWithSubtasks | null>(null);
 
-  // Determine today's name in Indonesian
-  const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const todayName = dayNames[new Date().getDay()];
-
-  // Active (uncompleted) tasks
+  // Active uncompleted tasks
   const activeTasks = tasks.filter((t) => !t.isCompleted);
 
-  // Filtered tasks based on active filter tab
-  const filteredTasks = tasks.filter((t) => {
-    if (filter === 'pending') return !t.isCompleted;
-    if (filter === 'completed') return t.isCompleted;
-    if (filter === 'urgent') return t.priority === 'urgent' && !t.isCompleted;
-    return true; // 'all'
-  });
+  // Nearest exam for hero countdown banner
+  const nearestExam = exams.length > 0 ? exams[0] : null;
 
   const handleToggleTask = (task: TaskWithSubtasks) => {
     const willComplete = !task.isCompleted;
     dispatch(toggleTaskCompletion(task.id));
     if (willComplete) {
-      dispatch(addExp(20)); // +20 EXP for completing a task!
+      dispatch(addExp(20));
     }
   };
 
-  // Mascot dynamic mood based on workload
-  const getMascotMood = () => {
-    if (activeTasks.length === 0) {
-      return {
-        image: require('../../../assets/senang.png'),
-        badge: 'Santai & Rileks',
-        badgeColor: '#10B981',
-        bgColor: '#ECFDF5',
-        speech: `Semua tugasmu beres, ${user.name || 'Teman Belajar'}! Hebat banget, nikmati waktu santaimu ya! 🌟`,
-      };
-    }
-    const hasUrgent = activeTasks.some((t) => {
-      if (!t.deadlineDate) return false;
-      const diff = new Date(t.deadlineDate).getTime() - Date.now();
-      return diff <= 24 * 3600 * 1000 && diff > 0;
-    });
-
-    if (hasUrgent) {
-      return {
-        image: require('../../../assets/semangat.png'),
-        badge: 'Deadline Dekat (H-1)',
-        badgeColor: '#EF4444',
-        bgColor: '#FEF2F2',
-        speech: `Ada tugas yang deadline-nya segera lho! Yuk cicil 1 sesi fokus sekarang biar ga panik! 🔥`,
-      };
-    }
-
-    return {
-      image: require('../../../assets/fokus.png'),
-      badge: 'Mode Belajar Aktif',
-      badgeColor: '#2563EB',
-      bgColor: '#EFF6FF',
-      speech: `Ada ${activeTasks.length} tugas yang perlu kamu cicil hari ini. Satu langkah demi satu langkah ya! 🚀`,
-    };
+  const handleQuickNote = () => {
+    Alert.alert(
+      'Catatan Cepat',
+      'Fitur catatan cepat aktif! Ingin mencatat pengingat materi atau tugas baru?',
+      [
+        { text: 'Tutup', style: 'cancel' },
+        { text: '+ Tambah Tugas', onPress: onOpenAddModal },
+      ]
+    );
   };
-
-  const mascotMood = getMascotMood();
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Top Header */}
-        <View style={styles.headerRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.greetingSub}>Halo, Selamat Belajar!</Text>
-            <Text style={styles.userName}>{user.name || 'Teman Belajar'}</Text>
-            {user.grade ? (
-              <Text style={styles.userClass}>{user.school ? `${user.school} · ` : ''}{user.grade}</Text>
-            ) : null}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* =========================================================
+            1. TOP HEADER: Streak Pill & Profile Avatar
+            ========================================================= */}
+        <View style={styles.topHeaderRow}>
+          <View style={styles.streakPill}>
+            <Flame color="#F59E0B" size={18} fill="#F59E0B" />
+            <Text style={styles.streakPillText}>
+              Streak {user.streakDays || 4} hari
+            </Text>
           </View>
-          <View style={styles.streakBadge}>
-            <Flame color="#F97316" size={18} fill="#F97316" />
-            <Text style={styles.streakText}>{user.streakDays} Hari</Text>
-          </View>
+
+          <TouchableOpacity
+            style={styles.profileAvatarBtn}
+            onPress={() => onNavigateTab && onNavigateTab('Profil')}
+            activeOpacity={0.8}
+            accessibilityLabel="Buka Profil"
+          >
+            <UserIcon color="#0F1B33" size={20} strokeWidth={2.2} />
+          </TouchableOpacity>
         </View>
 
-        {/* Mascot Status & Speech Card */}
-        <View style={[styles.mascotCard, { backgroundColor: mascotMood.bgColor }]}>
-          <Image source={mascotMood.image} style={styles.mascotImage} resizeMode="contain" />
-          <View style={styles.mascotTextContainer}>
-            <View style={[styles.moodBadge, { backgroundColor: mascotMood.badgeColor + '20' }]}>
-              <Sparkles size={12} color={mascotMood.badgeColor} />
-              <Text style={[styles.moodBadgeText, { color: mascotMood.badgeColor }]}>
-                {mascotMood.badge}
-              </Text>
+        {/* =========================================================
+            2. GREETING & LEVEL SCHOLAR PROGRESS BAR
+            ========================================================= */}
+        <View style={styles.greetingSection}>
+          <Text style={styles.greetingTitle}>
+            Halo, {user.name || 'Develean'}
+          </Text>
+          <View style={styles.levelProgressRow}>
+            <Text style={styles.levelText}>
+              Level {user.currentLevel || 3} · {user.levelTitle || 'Scholar'}
+            </Text>
+            <View style={styles.progressBarTrack}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${Math.min(100, Math.max(10, user.currentExp || 65))}%` },
+                ]}
+              />
             </View>
-            <Text style={styles.mascotSpeechText}>{mascotMood.speech}</Text>
+            <Text style={styles.percentText}>{user.currentExp || 65}%</Text>
           </View>
         </View>
 
-        {/* Quick Stats Grid */}
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{activeTasks.length}</Text>
-            <Text style={styles.statLabel}>Tugas Aktif</Text>
+        {/* =========================================================
+            3. HERO CARD: Hitung Mundur Ujian & Maskot Hamster
+            ========================================================= */}
+        <View style={styles.examHeroCard}>
+          <View style={styles.examHeroLeft}>
+            <Text style={styles.examTag}>Hitung mundur ujian</Text>
+            <Text style={styles.examTitle}>
+              {nearestExam
+                ? `${nearestExam.title},\n${nearestExam.daysLeft} hari lagi`
+                : 'PTS Matematika Wajib,\n3 hari lagi'}
+            </Text>
+            <TouchableOpacity
+              style={styles.reviewBtn}
+              onPress={() => onNavigateTab && onNavigateTab('Fokus')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.reviewBtnText}>Review materi</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>Lv. {user.currentLevel}</Text>
-            <Text style={styles.statLabel}>{user.levelTitle}</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{user.currentExp} XP</Text>
-            <Text style={styles.statLabel}>Total EXP</Text>
-          </View>
+
+          <Image
+            source={require('../../../assets/senang.png')}
+            style={styles.heroMascotImg}
+            resizeMode="contain"
+          />
         </View>
 
-        {/* Today's Schedule Section */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <Calendar size={18} color="#2563EB" />
-            <Text style={styles.sectionTitle}>Jadwal Hari Ini ({todayName})</Text>
-          </View>
+        {/* =========================================================
+            4. JADWAL HARI INI
+            ========================================================= */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>Jadwal hari ini</Text>
           <TouchableOpacity onPress={() => onNavigateTab && onNavigateTab('Jadwal')}>
-            <Text style={styles.sectionAction}>Lihat Semua</Text>
+            <Text style={styles.sectionDate}>Kamis, 30 Okt</Text>
           </TouchableOpacity>
         </View>
 
-        {schedules.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <BookOpen size={30} color="#94A3B8" />
-            <Text style={styles.emptyTitle}>Belum Ada Jadwal Pelajaran</Text>
-            <Text style={styles.emptyDesc}>
-              Tap tombol (+) di bawah untuk memasukkan mata pelajaran pertamamu!
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.scheduleList}>
-            {schedules.slice(0, 3).map((item, idx) => (
-              <View key={idx} style={styles.scheduleItem}>
-                <View style={[styles.scheduleColorBar, { backgroundColor: item.subject?.color || '#2563EB' }]} />
-                <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
-                  <Text style={styles.scheduleSubject}>{item.subject?.name || 'Mata Pelajaran'}</Text>
-                  <Text style={styles.scheduleTime}>
-                    {item.startTime} - {item.endTime} {item.subject?.room ? `· ${item.subject.room}` : ''}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
+        <View style={styles.whiteCardBox}>
+          {/* Item 1: Fisika */}
+          <TouchableOpacity
+            style={styles.scheduleRow}
+            onPress={() => onNavigateTab && onNavigateTab('Jadwal')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.subjectIconBox, { backgroundColor: '#DBEAFE' }]}>
+              <Text style={[styles.subjectInitial, { color: '#1D4ED8' }]}>F</Text>
+            </View>
+            <Text style={styles.subjectName}>Fisika</Text>
+            <Text style={styles.subjectTime}>07:30</Text>
+          </TouchableOpacity>
 
-        {/* Task Management & Subtasks Section */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <CheckCircle2 size={18} color="#2563EB" />
-            <Text style={styles.sectionTitle}>Daftar Tugas & Subtask</Text>
-          </View>
-          <TouchableOpacity onPress={onOpenAddModal}>
-            <Text style={styles.sectionAction}>+ Tambah</Text>
+          {/* Item 2: Kimia */}
+          <TouchableOpacity
+            style={styles.scheduleRow}
+            onPress={() => onNavigateTab && onNavigateTab('Jadwal')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.subjectIconBox, { backgroundColor: '#FFE8D1' }]}>
+              <Text style={[styles.subjectInitial, { color: '#9A3412' }]}>K</Text>
+            </View>
+            <Text style={styles.subjectName}>Kimia</Text>
+            <Text style={styles.subjectTime}>09:00</Text>
+          </TouchableOpacity>
+
+          {/* Item 3: Bahasa Indonesia */}
+          <TouchableOpacity
+            style={[styles.scheduleRow, { borderBottomWidth: 0 }]}
+            onPress={() => onNavigateTab && onNavigateTab('Jadwal')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.subjectIconBox, { backgroundColor: '#E0F2F1' }]}>
+              <Text style={[styles.subjectInitial, { color: '#115E59' }]}>B</Text>
+            </View>
+            <Text style={styles.subjectName}>Bahasa Indonesia</Text>
+            <Text style={styles.subjectTime}>11:00</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Task Filter Pills */}
-        <View style={styles.filterPillsRow}>
-          {[
-            { id: 'all', label: 'Semua' },
-            { id: 'pending', label: 'Belum Selesai' },
-            { id: 'urgent', label: 'Penting 🔥' },
-            { id: 'completed', label: 'Selesai' },
-          ].map((item) => {
-            const isActive = filter === item.id;
-            return (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.filterPill, isActive && styles.filterPillActive]}
-                onPress={() => dispatch(setFilter(item.id as any))}
-              >
-                <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+        {/* =========================================================
+            5. TUGAS PRIORITAS
+            ========================================================= */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>Tugas prioritas</Text>
+          <Text style={styles.taskCountBadge}>{activeTasks.length || 2} tugas</Text>
         </View>
 
-        {filteredTasks.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Sparkles size={32} color="#10B981" />
-            <Text style={styles.emptyTitle}>
-              {filter === 'completed'
-                ? 'Belum ada tugas yang diselesaikan'
-                : 'Tidak ada tugas pada filter ini'}
-            </Text>
-            <Text style={styles.emptyDesc}>
-              Tap tombol (+) di bawah untuk membuat tugas baru dan memecahnya menjadi langkah mini!
-            </Text>
+        <View style={styles.whiteCardBoxPadded}>
+          {/* Task 1: Latihan Fisika GLBB */}
+          <View style={styles.taskPriorityRow}>
+            <View style={[styles.subjectIconBox, { backgroundColor: '#DBEAFE' }]}>
+              <Text style={[styles.subjectInitial, { color: '#1D4ED8' }]}>F</Text>
+            </View>
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={() => {
+                if (tasks.length > 0) setSelectedTask(tasks[0]);
+              }}
+            >
+              <Text style={styles.taskTitleText}>Latihan Fisika GLBB</Text>
+              <Text style={styles.taskDeadlineText}>Besok, 23:59</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cicilBtn}
+              onPress={() => onNavigateTab && onNavigateTab('Fokus')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.cicilBtnText}>Cicil</Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          <View style={styles.taskList}>
-            {filteredTasks.map((task) => {
-              const subCount = task.subtasks.length;
-              const subDone = task.subtasks.filter((s) => s.isCompleted).length;
-              const progress = subCount > 0 ? Math.round((subDone / subCount) * 100) : task.isCompleted ? 100 : 0;
 
-              return (
-                <TouchableOpacity
-                  key={task.id}
-                  style={styles.taskCard}
-                  activeOpacity={0.8}
-                  onPress={() => setSelectedTask(task)}
-                >
-                  <TouchableOpacity
-                    style={styles.taskCheckTouch}
-                    onPress={() => handleToggleTask(task)}
-                  >
-                    {task.isCompleted ? (
-                      <CheckCircle2 size={22} color="#10B981" />
-                    ) : (
-                      <Circle size={22} color="#CBD5E1" />
-                    )}
-                  </TouchableOpacity>
+          {/* Task 2: Rangkuman Sejarah Bab 4 */}
+          <TouchableOpacity
+            style={[styles.taskPriorityRow, { borderBottomWidth: 0, paddingBottom: 0 }]}
+            onPress={() => {
+              if (tasks.length > 1) setSelectedTask(tasks[1]);
+              else if (tasks.length > 0) setSelectedTask(tasks[0]);
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.subjectIconBox, { backgroundColor: '#EDE9FE' }]}>
+              <Text style={[styles.subjectInitial, { color: '#5B21B6' }]}>S</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.taskTitleText}>Rangkuman Sejarah Bab 4</Text>
+              <Text style={styles.taskDeadlineText}>2 hari lagi</Text>
+            </View>
+            <ChevronRight color="#4A5670" size={18} strokeWidth={2.2} />
+          </TouchableOpacity>
+        </View>
 
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={[
-                        styles.taskTitle,
-                        task.isCompleted && styles.taskTitleCompleted,
-                      ]}
-                    >
-                      {task.title}
-                    </Text>
-
-                    <View style={styles.taskMetaRow}>
-                      {task.deadlineDate ? (
-                        <View style={styles.taskDeadlineContainer}>
-                          <Clock size={11} color="#EF4444" />
-                          <Text style={styles.taskDeadlineText}>{task.deadlineDate}</Text>
-                        </View>
-                      ) : null}
-
-                      {subCount > 0 ? (
-                        <View style={styles.subtaskBadge}>
-                          <CheckSquare size={11} color="#2563EB" />
-                          <Text style={styles.subtaskBadgeText}>
-                            {subDone}/{subCount} subtask ({progress}%)
-                          </Text>
-                        </View>
-                      ) : (
-                        <View style={[styles.subtaskBadge, { backgroundColor: '#F1F5F9' }]}>
-                          <Sparkles size={11} color="#64748B" />
-                          <Text style={[styles.subtaskBadgeText, { color: '#64748B' }]}>
-                            Tap untuk pecah subtask
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Mini Progress Bar if has subtasks */}
-                    {subCount > 0 && (
-                      <View style={styles.miniProgressTrack}>
-                        <View
-                          style={[
-                            styles.miniProgressFill,
-                            {
-                              width: `${progress}%`,
-                              backgroundColor: task.isCompleted ? '#10B981' : '#2563EB',
-                            },
-                          ]}
-                        />
-                      </View>
-                    )}
-                  </View>
-
-                  <View
-                    style={[
-                      styles.priorityPill,
-                      { backgroundColor: task.priority === 'urgent' ? '#FEE2E2' : '#F1F5F9' },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.priorityText,
-                        { color: task.priority === 'urgent' ? '#EF4444' : '#64748B' },
-                      ]}
-                    >
-                      {task.priority === 'urgent' ? 'Penting' : 'Normal'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Task Detail Modal */}
-        <TaskDetailModal
-          task={selectedTask}
-          visible={!!selectedTask}
-          onClose={() => setSelectedTask(null)}
-          onStartFocus={() => {
-            if (onNavigateTab) onNavigateTab('Fokus');
-          }}
-        />
+        {/* =========================================================
+            6. QUICK ACTION: + Tambah Catatan Cepat
+            ========================================================= */}
+        <TouchableOpacity
+          style={styles.quickNoteBtn}
+          onPress={handleQuickNote}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.quickNoteText}>+ Tambah Catatan Cepat</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* Task Detail Modal with Interactive Subtasks */}
+      <TaskDetailModal
+        task={selectedTask}
+        visible={!!selectedTask}
+        onClose={() => setSelectedTask(null)}
+        onStartFocus={() => {
+          setSelectedTask(null);
+          if (onNavigateTab) onNavigateTab('Fokus');
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -347,295 +273,245 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F3F6FA', // Exact template background
   },
   scrollContent: {
-    padding: 18,
-    paddingBottom: 90,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 36 : 14,
+    paddingBottom: 110, // Avoid overlapping with bottom navigation
   },
-  headerRow: {
+  topHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  greetingSub: {
-    fontSize: 13,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  userName: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0F1B33',
-    letterSpacing: -0.3,
-  },
-  userClass: {
-    fontSize: 12,
-    color: '#2563EB',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  streakBadge: {
+  streakPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF7ED',
-    borderWidth: 1.5,
-    borderColor: '#FFEDD5',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    gap: 6,
+    gap: 8,
+    backgroundColor: '#FFF1CC',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    height: 44,
   },
-  streakText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#EA580C',
-  },
-  mascotCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  mascotImage: {
-    width: 68,
-    height: 68,
-  },
-  mascotTextContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  moodBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    gap: 4,
-    marginBottom: 4,
-  },
-  moodBadgeText: {
-    fontSize: 11,
+  streakPillText: {
+    color: '#7A4A00',
     fontWeight: '700',
-  },
-  mascotSpeechText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1E293B',
-    lineHeight: 18,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F1B33',
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-    marginTop: 6,
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F1B33',
-  },
-  sectionAction: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#2563EB',
-  },
-  emptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 22,
-    alignItems: 'center',
-    textAlign: 'center',
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#CBD5E1',
-    marginBottom: 16,
-  },
-  emptyTitle: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#334155',
+  },
+  profileAvatarBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E3EAF4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  greetingSection: {
+    marginTop: 16,
+  },
+  greetingTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#0F1B33',
+  },
+  levelProgressRow: {
     marginTop: 8,
-  },
-  emptyDesc: {
-    fontSize: 12,
-    color: '#64748B',
-    textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 16,
-  },
-  scheduleList: {
-    gap: 8,
-    marginBottom: 16,
-  },
-  scheduleItem: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    alignItems: 'center',
+    gap: 10,
+  },
+  levelText: {
+    fontSize: 13,
+    color: '#4A5670',
+    fontWeight: '600',
+  },
+  progressBarTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 99,
+    backgroundColor: '#DCE5F2',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
-  scheduleColorBar: {
-    width: 6,
+  progressBarFill: {
+    height: 8,
+    borderRadius: 99,
+    backgroundColor: '#2563EB',
   },
-  scheduleSubject: {
-    fontSize: 14,
+  percentText: {
+    fontSize: 13,
+    color: '#4A5670',
+    fontWeight: '600',
+  },
+  examHeroCard: {
+    marginTop: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 112,
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  examHeroLeft: {
+    flex: 1,
+  },
+  examTag: {
+    fontSize: 12,
     fontWeight: '700',
+    color: '#B45309',
+  },
+  examTitle: {
+    marginTop: 4,
+    fontSize: 17,
+    fontWeight: '800',
+    lineHeight: 22,
     color: '#0F1B33',
   },
-  scheduleTime: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  filterPillsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  filterPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  filterPillActive: {
+  reviewBtn: {
+    marginTop: 10,
+    height: 36,
+    paddingHorizontal: 16,
+    borderRadius: 999,
     backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
-  },
-  filterPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  filterPillTextActive: {
-    color: '#FFFFFF',
-  },
-  taskList: {
-    gap: 10,
-    marginBottom: 16,
-  },
-  taskCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
+  reviewBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  heroMascotImg: {
+    width: 105,
+    height: 100,
+    marginLeft: 8,
+  },
+  sectionHeaderRow: {
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4A5670',
+  },
+  sectionDate: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4A5670',
+  },
+  taskCountBadge: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4A5670',
+  },
+  whiteCardBox: {
+    marginTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
-    shadowRadius: 3,
+    shadowRadius: 6,
     elevation: 1,
   },
-  taskCheckTouch: {
-    marginRight: 12,
+  whiteCardBoxPadded: {
+    marginTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
-  taskTitle: {
-    fontSize: 14,
+  scheduleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    height: 52,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EDF1F7',
+  },
+  subjectIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  subjectInitial: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  subjectName: {
+    flex: 1,
     fontWeight: '700',
+    fontSize: 15,
     color: '#0F1B33',
-    lineHeight: 18,
   },
-  taskTitleCompleted: {
-    textDecorationLine: 'line-through',
-    color: '#94A3B8',
+  subjectTime: {
+    fontSize: 13,
+    color: '#4A5670',
+    fontWeight: '600',
   },
-  taskMetaRow: {
+  taskPriorityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 6,
-    flexWrap: 'wrap',
+    gap: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EDF1F7',
+    marginBottom: 8,
   },
-  taskDeadlineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  taskTitleText: {
+    fontWeight: '700',
+    fontSize: 15,
+    color: '#0F1B33',
   },
   taskDeadlineText: {
-    fontSize: 11,
-    color: '#EF4444',
-    fontWeight: '600',
+    fontSize: 12,
+    color: '#4A5670',
+    fontWeight: '500',
+    marginTop: 2,
   },
-  subtaskBadge: {
-    flexDirection: 'row',
+  cicilBtn: {
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: '#2563EB',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 4,
+    justifyContent: 'center',
   },
-  subtaskBadgeText: {
-    fontSize: 11,
+  cicilBtnText: {
+    color: '#FFFFFF',
     fontWeight: '700',
-    color: '#2563EB',
+    fontSize: 13,
   },
-  miniProgressTrack: {
-    height: 4,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginTop: 8,
+  quickNoteBtn: {
+    marginTop: 12,
+    width: '100%',
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#E3EAF4',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  miniProgressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  priorityPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginLeft: 10,
-  },
-  priorityText: {
-    fontSize: 11,
+  quickNoteText: {
+    color: '#0F1B33',
     fontWeight: '700',
+    fontSize: 14,
   },
 });

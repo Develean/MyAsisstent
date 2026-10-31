@@ -142,7 +142,7 @@ export const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F3F6FA',
   },
   container: {
     padding: 18,
