@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "MyAsisstent",
+    "slug": "myasisstent",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/senang.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/senang.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F3F6FA"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/senang.png",
+        "backgroundColor": "#2563EB"
+      },
+      "package": "com.develean.myasisstent"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/senang.png",
+          "color": "#2563EB"
+        }
+      ]
+    ]
+  }
+}
+
