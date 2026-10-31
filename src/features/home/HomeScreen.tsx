@@ -121,7 +121,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
           <View style={styles.examHeroLeft}>
             <Text style={styles.examTag}>Hitung mundur ujian</Text>
             <Text style={styles.examTitle}>
-              {nearestExam
+              {nearestExam && nearestExam.title.length > 1
                 ? `${nearestExam.title},\n${nearestExam.daysLeft} hari lagi`
                 : 'PTS Matematika Wajib,\n3 hari lagi'}
             </Text>
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 36 : 14,
+    paddingTop: 8,
     paddingBottom: 110, // Avoid overlapping with bottom navigation
   },
   topHeaderRow: {
