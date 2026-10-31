@@ -8,6 +8,8 @@ import {
   ScrollView,
   TextInput,
   Alert,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../../store/store';
 import {
@@ -347,6 +349,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F3F6FA',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0,
   },
   container: {
     padding: 18,

@@ -8,7 +8,6 @@ import {
   PanResponder,
   GestureResponderEvent,
   PanResponderGestureState,
-  ScrollView,
 } from 'react-native';
 import Svg, {
   G,
@@ -46,15 +45,6 @@ const QUOTES = [
   'Wah geli tahu disentuh-sentuh! Hehehe... Makasih ya, aku makin semangat! 🥰',
   'Kamu sudah tuntasin banyak tugas! Kalau penat, ambil jeda 5 menit dulu yuk ☕',
   'Psst... kalau rajin fokus sampai Level 5, aku bakal pakai kostum wisuda lho! 🎓',
-];
-
-const EMOTION_CHIPS: { id: MascotMood; label: string; icon: string }[] = [
-  { id: 'normal', label: 'Normal', icon: '🐹' },
-  { id: 'happy', label: 'Senang', icon: '🥰' },
-  { id: 'sparkle', label: 'Semangat', icon: '⭐' },
-  { id: 'surprised', label: 'Kaget', icon: '😲' },
-  { id: 'sad', label: 'Sedih', icon: '🥺' },
-  { id: 'sleep', label: 'Tidur', icon: '💤' },
 ];
 
 interface MascotPuppetViewProps {
@@ -456,32 +446,6 @@ export const MascotPuppetView: React.FC<MascotPuppetViewProps> = ({ onExpReward 
           </Svg>
         </Animated.View>
       </TouchableOpacity>
-
-      {/* 3. Interactive Emotion Chips (Direct from Maskot Hidup) */}
-      <View style={styles.chipsContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsScroll}
-        >
-          {EMOTION_CHIPS.map((chip) => {
-            const isSelected = currentMood === chip.id;
-            return (
-              <TouchableOpacity
-                key={chip.id}
-                style={[styles.chipBtn, isSelected && styles.chipBtnSelected]}
-                onPress={() => handleSelectMood(chip.id)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.chipIcon}>{chip.icon}</Text>
-                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                  {chip.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
     </View>
   );
 };
@@ -531,37 +495,5 @@ const styles = StyleSheet.create({
   },
   svgPuppet: {
     overflow: 'visible',
-  },
-  chipsContainer: {
-    marginTop: 14,
-    width: '100%',
-  },
-  chipsScroll: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 4,
-  },
-  chipBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: '#E3EAF4',
-  },
-  chipBtnSelected: {
-    backgroundColor: '#2563EB',
-  },
-  chipIcon: {
-    fontSize: 14,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0F1B33',
-  },
-  chipTextSelected: {
-    color: '#FFFFFF',
   },
 });

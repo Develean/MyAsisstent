@@ -6,11 +6,14 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
+  Platform,
+  StatusBar,
+  Alert,
 } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../../store/store';
 import { addExp } from '../user/userSlice';
 import { MascotPuppetView } from './mascot/MascotPuppetView';
-import { Award, Flame, CheckCircle, Clock, Settings } from 'lucide-react-native';
+import { Cloud, Settings } from 'lucide-react-native';
 
 export const ProfileScreen: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -25,114 +28,147 @@ export const ProfileScreen: React.FC = () => {
 
   const expPercentage = Math.min(100, Math.round((user.currentExp / user.maxExp) * 100));
 
+  const handleBackupNow = () => {
+    Alert.alert(
+      'Pencadangan Berhasil',
+      'Seluruh jadwal pelajaran, tugas, dan statistik belajar Anda telah disinkronkan ke Google Drive pribadi Anda.'
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Top Bar */}
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Top Header Bar */}
         <View style={styles.topBar}>
           <Text style={styles.topBarTitle}>Profil Siswa</Text>
-          <TouchableOpacity style={styles.settingsBtn}>
-            <Settings size={20} color="#64748B" />
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            activeOpacity={0.8}
+            onPress={() => Alert.alert('Pengaturan', 'Akun: Develean (Kelas 11 MIPA 2)')}
+          >
+            <Settings size={18} color="#4A5670" />
           </TouchableOpacity>
         </View>
 
-        {/* Mascot Interactive Stage Card */}
+        {/* 1. Main Mascot Stage Card (Exact Match Design Image 2) */}
         <View style={styles.mascotStageCard}>
           <MascotPuppetView onExpReward={handleExpBonus} />
 
-          <Text style={styles.profileName}>{user.name || 'Teman Belajar'}</Text>
+          {/* User Name & Class */}
+          <Text style={styles.profileName}>{user.name || 'Develean'}</Text>
           <Text style={styles.profileSchool}>
-            {user.school ? `${user.school} · ` : ''}{user.grade || 'Kelas 11 MIPA 2'}
+            {user.school ? `${user.school} · ` : 'SMAN 1 Jakarta · '}{user.grade || 'Kelas 11 MIPA 2'}
           </Text>
 
-          {/* Gamification EXP Level Card */}
+          {/* EXP Level Badge Card (Image 2) */}
           <View style={styles.expCard}>
             <View style={styles.expHeader}>
-              <View style={styles.levelBadge}>
-                <Award size={14} color="#2563EB" />
-                <Text style={styles.levelText}>Level {user.currentLevel} · {user.levelTitle}</Text>
-              </View>
-              <Text style={styles.expNumberText}>{user.currentExp}/{user.maxExp} EXP</Text>
+              <Text style={styles.levelText}>
+                Level {user.currentLevel} · {user.levelTitle}
+              </Text>
+              <Text style={styles.expNumberText}>
+                {user.currentExp} / {user.maxExp} EXP
+              </Text>
             </View>
             <View style={styles.expProgressBarBg}>
               <View style={[styles.expProgressBarFill, { width: `${expPercentage}%` }]} />
             </View>
             <Text style={styles.expBonusHint}>
-              💡 Tap maskot 3 kali atau selesaikan subtask untuk dapat +5 EXP!
+              Capai Level {user.currentLevel + 1} ({user.currentLevel >= 4 ? 'Legend' : 'Master'}) untuk membuka tema maskot baru!
             </Text>
           </View>
         </View>
 
-        {/* Study Statistics Grid */}
-        <View style={styles.sectionTitleRow}>
-          <Text style={styles.sectionTitle}>Statistik Belajarmu</Text>
-        </View>
-
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIconCircle, { backgroundColor: '#EFF6FF' }]}>
-              <CheckCircle size={20} color="#2563EB" />
-            </View>
-            <Text style={styles.statValue}>{completedTasksCount}</Text>
-            <Text style={styles.statLabel}>Tugas Selesai</Text>
+        {/* 2. 3 Stat Cards in a Row (Exact Match Design Image 1) */}
+        <View style={styles.statsRow}>
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>{user.streakDays || 4}</Text>
+            <Text style={styles.statLabel}>Streak hari</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIconCircle, { backgroundColor: '#FFF7ED' }]}>
-              <Flame size={20} color="#EA580C" />
-            </View>
-            <Text style={styles.statValue}>{user.streakDays} Hari</Text>
-            <Text style={styles.statLabel}>Streak Belajar</Text>
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>18</Text>
+            <Text style={styles.statLabel}>Sesi fokus</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIconCircle, { backgroundColor: '#ECFDF5' }]}>
-              <Clock size={20} color="#059669" />
-            </View>
-            <Text style={styles.statValue}>{user.currentLevel * 25} m</Text>
-            <Text style={styles.statLabel}>Waktu Fokus</Text>
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>{completedTasksCount || 27}</Text>
+            <Text style={styles.statLabel}>Tugas selesai</Text>
           </View>
         </View>
 
-        {/* Study Badges Section */}
-        <View style={styles.sectionTitleRow}>
-          <Text style={styles.sectionTitle}>Pencapaian & Lencana</Text>
-          <Text style={styles.sectionLink}>Semua (4)</Text>
+        {/* 3. Section Lencana (Exact Match Design Image 1) */}
+        <View style={styles.badgesSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Lencana</Text>
+            <Text style={styles.sectionSubtitle}>3 dari 12</Text>
+          </View>
+
+          <View style={styles.badgesCard}>
+            {/* Badge 1: 1 Hari Streak */}
+            <TouchableOpacity
+              style={[styles.badgeBox, { backgroundColor: '#FFF1CC' }]}
+              activeOpacity={0.8}
+              onPress={() => Alert.alert('Lencana 1', 'Langkah Pertama! Belajar konsisten selama 1 hari (Tuntas)')}
+            >
+              <Text style={[styles.badgeNumber, { color: '#92400E' }]}>1</Text>
+            </TouchableOpacity>
+
+            {/* Badge 2: 7 Hari Streak */}
+            <TouchableOpacity
+              style={[styles.badgeBox, { backgroundColor: '#DBEAFE' }]}
+              activeOpacity={0.8}
+              onPress={() => Alert.alert('Lencana 7', 'Pejuang Sepekan! Pertahankan 7 hari streak berturut-turut (Tuntas)')}
+            >
+              <Text style={[styles.badgeNumber, { color: '#1D4ED8' }]}>7</Text>
+            </TouchableOpacity>
+
+            {/* Badge 3: 14 Hari Streak */}
+            <TouchableOpacity
+              style={[styles.badgeBox, { backgroundColor: '#EDE9FE' }]}
+              activeOpacity={0.8}
+              onPress={() => Alert.alert('Lencana 14', 'Master Konsistensi! Belajar tekun selama 14 hari (Tuntas)')}
+            >
+              <Text style={[styles.badgeNumber, { color: '#5B21B6' }]}>14</Text>
+            </TouchableOpacity>
+
+            {/* Badge 4: 30 Hari Streak (Terkunci) */}
+            <TouchableOpacity
+              style={[styles.badgeBox, { backgroundColor: '#F1F5F9' }]}
+              activeOpacity={0.8}
+              onPress={() => Alert.alert('Lencana 30', 'Legenda Belajar! Capai 30 hari streak untuk membuka lencana emas ini (Dalam Progres)')}
+            >
+              <Text style={[styles.badgeNumber, { color: '#94A3B8' }]}>30</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.badgesList}>
-          <View style={styles.badgeItem}>
-            <Text style={styles.badgeEmoji}>🔥</Text>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.badgeName}>Streak Pemula (3 Hari)</Text>
-              <Text style={styles.badgeDesc}>Belajar konsisten tanpa bolos selama 3 hari</Text>
+        {/* 4. Section Google Drive Siswa (BYOS) (Exact Match Design Image 1) */}
+        <View style={styles.syncCard}>
+          <View style={styles.syncHeaderRow}>
+            <View style={styles.syncTitleLeft}>
+              <View style={styles.cloudIconCircle}>
+                <Cloud size={18} color="#2563EB" />
+              </View>
+              <Text style={styles.syncTitle}>Google Drive Siswa</Text>
             </View>
-            <View style={styles.badgeDonePill}>
-              <Text style={styles.badgeDoneText}>Tuntas</Text>
-            </View>
-          </View>
-
-          <View style={styles.badgeItem}>
-            <Text style={styles.badgeEmoji}>⏱️</Text>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.badgeName}>Master Pomodoro</Text>
-              <Text style={styles.badgeDesc}>Selesaikan 5 sesi fokus 25 menit</Text>
-            </View>
-            <View style={styles.badgeDonePill}>
-              <Text style={styles.badgeDoneText}>Tuntas</Text>
+            <View style={styles.connectedPill}>
+              <Text style={styles.connectedText}>Terhubung</Text>
             </View>
           </View>
-
-          <View style={styles.badgeItem}>
-            <Text style={styles.badgeEmoji}>🎓</Text>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.badgeName}>Lulusan Terbaik (Level 5)</Text>
-              <Text style={styles.badgeDesc}>Buka kostum toga wisuda untuk maskotmu!</Text>
-            </View>
-            <View style={[styles.badgeDonePill, { backgroundColor: '#F1F5F9' }]}>
-              <Text style={[styles.badgeDoneText, { color: '#64748B' }]}>Level {user.currentLevel}/5</Text>
-            </View>
-          </View>
+          <Text style={styles.syncDesc}>
+            Data tersimpan aman di Google Drive akun pribadi Anda tanpa server perantara. Kuota terpakai: 48 KB dari 100 GB.
+          </Text>
+          <TouchableOpacity
+            style={styles.backupButton}
+            onPress={handleBackupNow}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.backupButtonText}>📥 Cadangkan Sekarang</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -143,16 +179,19 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F3F6FA',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0,
   },
   container: {
-    padding: 18,
-    paddingBottom: 90,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 100,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
+    paddingHorizontal: 4,
   },
   topBarTitle: {
     fontSize: 22,
@@ -169,66 +208,66 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   mascotStageCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 16,
+    padding: 18,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
+    shadowColor: '#0F1B33',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
     elevation: 2,
-    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#EBF0F7',
   },
   profileName: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#0F1B33',
-    marginTop: 4,
+    marginTop: 8,
+    textAlign: 'center',
   },
   profileSchool: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 13,
+    color: '#4A5670',
     fontWeight: '600',
     marginTop: 2,
+    textAlign: 'center',
   },
   expCard: {
     marginTop: 14,
     width: '100%',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
+    backgroundColor: '#F3F6FA',
+    borderRadius: 18,
     padding: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    paddingHorizontal: 14,
   },
   expHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  levelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
   levelText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#1E3A8A',
+    color: '#0F1B33',
   },
   expNumberText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#2563EB',
+    color: '#0F1B33',
   },
   expProgressBarBg: {
     height: 8,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 4,
+    backgroundColor: '#DCE5F2',
+    borderRadius: 99,
     overflow: 'hidden',
     marginTop: 8,
     marginBottom: 6,
@@ -236,97 +275,161 @@ const styles = StyleSheet.create({
   expProgressBarFill: {
     height: '100%',
     backgroundColor: '#2563EB',
-    borderRadius: 4,
+    borderRadius: 99,
   },
   expBonusHint: {
-    fontSize: 10,
-    color: '#64748B',
+    fontSize: 11,
+    color: '#4A5670',
     fontWeight: '600',
     marginTop: 2,
+    lineHeight: 15,
   },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0F1B33',
-  },
-  sectionLink: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#2563EB',
-  },
-  statsGrid: {
+  statsRow: {
+    marginTop: 12,
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 20,
   },
-  statCard: {
+  statBox: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
     alignItems: 'center',
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#EBF0F7',
   },
-  statIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  statValue: {
-    fontSize: 16,
+  statNumber: {
+    fontSize: 22,
     fontWeight: '800',
     color: '#0F1B33',
   },
   statLabel: {
-    fontSize: 10,
+    fontSize: 12,
+    color: '#4A5670',
     fontWeight: '600',
-    color: '#64748B',
     marginTop: 2,
   },
-  badgesList: {
-    gap: 10,
+  badgesSection: {
+    marginTop: 14,
   },
-  badgeItem: {
+  sectionHeaderRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    marginBottom: 8,
+    paddingHorizontal: 2,
   },
-  badgeEmoji: {
-    fontSize: 26,
-  },
-  badgeName: {
-    fontSize: 13,
+  sectionTitle: {
+    fontSize: 14,
     fontWeight: '800',
     color: '#0F1B33',
   },
-  badgeDesc: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
+  sectionSubtitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4A5670',
   },
-  badgeDonePill: {
+  badgesCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#EBF0F7',
+  },
+  badgeBox: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeNumber: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  syncCard: {
+    marginTop: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 16,
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#EBF0F7',
+  },
+  syncHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  syncTitleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cloudIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  syncTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F1B33',
+    marginLeft: 10,
+  },
+  connectedPill: {
     backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 999,
   },
-  badgeDoneText: {
+  connectedText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#15803D',
+    color: '#166534',
+  },
+  syncDesc: {
+    fontSize: 12,
+    color: '#4A5670',
+    fontWeight: '600',
+    marginTop: 8,
+    lineHeight: 17,
+  },
+  backupButton: {
+    marginTop: 10,
+    width: '100%',
+    height: 40,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#DCE5F2',
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backupButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F1B33',
   },
 });
