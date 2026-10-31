@@ -7,7 +7,7 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
-import { useAppSelector, useAppDispatch } from '../../app/store';
+import { useAppSelector, useAppDispatch } from '../../store/store';
 import { setSelectedDay, ScheduleWithSubject } from './scheduleSlice';
 import { SubjectDetailModal } from './components/SubjectDetailModal';
 import { AddExamModal } from './components/AddExamModal';

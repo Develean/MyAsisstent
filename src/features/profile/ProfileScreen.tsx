@@ -7,7 +7,7 @@ import {
   SafeAreaView,
   TouchableOpacity,
 } from 'react-native';
-import { useAppSelector, useAppDispatch } from '../../app/store';
+import { useAppSelector, useAppDispatch } from '../../store/store';
 import { addExp } from '../user/userSlice';
 import { MascotPuppetView } from './mascot/MascotPuppetView';
 import { Award, Flame, CheckCircle, Clock, Settings } from 'lucide-react-native';

@@ -9,7 +9,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { useAppSelector, useAppDispatch } from '../../app/store';
+import { useAppSelector, useAppDispatch } from '../../store/store';
 import {
   setDuration,
   setTimerMode,

@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useAppDispatch, useAppSelector } from '../../../app/store';
+import { useAppDispatch, useAppSelector } from '../../../store/store';
 import { addExam } from '../scheduleSlice';
 import { LocalDataRepository } from '../../../db/repository';
 import { LocalNotificationService } from '../../../shared/notifications/notificationService';

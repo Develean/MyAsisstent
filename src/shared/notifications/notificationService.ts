@@ -7,6 +7,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -69,6 +71,7 @@ export class LocalNotificationService {
             sound: true,
           },
           trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
             date: triggerDateH1,
           },
         });
@@ -105,6 +108,7 @@ export class LocalNotificationService {
             sound: true,
           },
           trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
             date: triggerDate,
           },
         });

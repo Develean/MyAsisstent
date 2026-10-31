@@ -31,8 +31,9 @@
           "icon": "./assets/senang.png",
           "color": "#2563EB"
         }
-      ]
+      ],
+      "expo-sqlite",
+      "expo-status-bar"
     ]
   }
 }
-

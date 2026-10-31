@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useAppDispatch, useAppSelector } from '../../app/store';
+import { useAppDispatch, useAppSelector } from '../../store/store';
 import { addTask } from '../../features/tasks/taskSlice';
 import { addSchedule, addSubject } from '../../features/schedule/scheduleSlice';
 import { autoGenerateSubtasks } from '../../features/tasks/subtaskEngine';

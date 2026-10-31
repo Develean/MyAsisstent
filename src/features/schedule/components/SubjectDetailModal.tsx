@@ -10,7 +10,7 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
-import { useAppDispatch, useAppSelector } from '../../../app/store';
+import { useAppDispatch, useAppSelector } from '../../../store/store';
 import { ScheduleWithSubject, deleteSchedule } from '../scheduleSlice';
 import { addTask, toggleTaskCompletion } from '../../tasks/taskSlice';
 import { autoGenerateSubtasks } from '../../tasks/subtaskEngine';

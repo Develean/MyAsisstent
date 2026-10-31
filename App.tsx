@@ -4,7 +4,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { Provider } from 'react-redux';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
-import { store, useAppSelector, useAppDispatch } from './src/app/store';
+import { store, useAppSelector, useAppDispatch } from './src/store/store';
 import { initDatabase } from './src/db/client';
 import { LocalDataRepository } from './src/db/repository';
 import { LocalNotificationService } from './src/shared/notifications/notificationService';

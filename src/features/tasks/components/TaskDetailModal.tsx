@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useAppDispatch } from '../../../app/store';
+import { useAppDispatch } from '../../../store/store';
 import {
   TaskWithSubtasks,
   toggleSubtaskCompletion,

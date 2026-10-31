@@ -383,10 +383,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   eyeWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   cheekWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   hintBadge: {
     backgroundColor: '#F1F5F9',

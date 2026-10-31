@@ -9,7 +9,7 @@ import {
   Dimensions,
   SafeAreaView,
 } from 'react-native';
-import { useAppDispatch } from '../../app/store';
+import { useAppDispatch } from '../../store/store';
 import { completeOnboarding } from '../user/userSlice';
 
 const { width } = Dimensions.get('window');
