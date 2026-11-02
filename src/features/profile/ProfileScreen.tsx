@@ -145,7 +145,7 @@ export const ProfileScreen: React.FC = () => {
                 Alert.alert(
                   'Lencana 1 Hari',
                   isBadge1Unlocked
-                    ? 'Langkah Pertama! Belajar konsisten selama 1 hari (Tuntas ✅)'
+                    ? 'Langkah Pertama! Belajar konsisten selama 1 hari (Tuntas)'
                     : 'Pertahankan belajar 1 hari untuk membuka lencana ini.'
                 )
               }
@@ -171,7 +171,7 @@ export const ProfileScreen: React.FC = () => {
                 Alert.alert(
                   'Lencana 7 Hari',
                   isBadge7Unlocked
-                    ? 'Pejuang Sepekan! Pertahankan 7 hari streak berturut-turut (Tuntas ✅)'
+                    ? 'Pejuang Sepekan! Pertahankan 7 hari streak berturut-turut (Tuntas)'
                     : 'Pertahankan 7 hari streak untuk membuka lencana ini.'
                 )
               }
@@ -197,7 +197,7 @@ export const ProfileScreen: React.FC = () => {
                 Alert.alert(
                   'Lencana 14 Hari',
                   isBadge14Unlocked
-                    ? 'Master Konsistensi! Belajar tekun selama 14 hari (Tuntas ✅)'
+                    ? 'Master Konsistensi! Belajar tekun selama 14 hari (Tuntas)'
                     : 'Pertahankan 14 hari streak untuk membuka lencana ini.'
                 )
               }
@@ -223,7 +223,7 @@ export const ProfileScreen: React.FC = () => {
                 Alert.alert(
                   'Lencana 30 Hari',
                   isBadge30Unlocked
-                    ? 'Legenda Belajar! Capai 30 hari streak untuk membuka lencana emas ini (Tuntas ✅)'
+                    ? 'Legenda Belajar! Capai 30 hari streak untuk membuka lencana emas ini (Tuntas)'
                     : 'Pertahankan 30 hari streak untuk membuka lencana ini.'
                 )
               }
@@ -261,7 +261,8 @@ export const ProfileScreen: React.FC = () => {
             onPress={handleBackupNow}
             activeOpacity={0.8}
           >
-            <Text style={styles.backupButtonText}>📥 Cadangkan Sekarang</Text>
+            <Cloud size={15} color="#0F1B33" style={{ marginRight: 6 }} />
+            <Text style={styles.backupButtonText}>Cadangkan Sekarang</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -523,6 +524,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DCE5F2',
     backgroundColor: '#F8FAFC',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },

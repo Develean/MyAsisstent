@@ -93,7 +93,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
     dispatch(toggleTaskCompletion(task.id));
     if (willComplete) {
       dispatch(addExp(20));
-      showToast('Tugas Selesai! 🎉', '+20 EXP ditambahkan ke profilmu', 'exp');
+      showToast('Tugas Selesai!', '+20 EXP ditambahkan ke profilmu', 'exp');
     } else {
       showToast('Status Tugas Diperbarui', 'Tugas dikembalikan ke antrean aktif', 'info');
     }
@@ -295,7 +295,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
             <View style={[styles.emptyIconCircle, { backgroundColor: '#ECFDF5' }]}>
               <CheckCircle2 size={22} color="#059669" />
             </View>
-            <Text style={styles.emptyTitle}>Belum ada tugas yang menumpuk 🎉</Text>
+            <Text style={styles.emptyTitle}>Belum Ada Tugas Tertunda</Text>
             <Text style={styles.emptySubtitle}>
               Semua tugasmu sudah tuntas! Catat PR atau target materi baru agar progres belajarmu terus berjalan.
             </Text>

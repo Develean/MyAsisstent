@@ -176,7 +176,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
       [
         { text: 'Batal', style: 'cancel' },
         {
-          text: '📅 Jadwal Mata Pelajaran',
+          text: 'Jadwal Mata Pelajaran',
           onPress: () => {
             if (onOpenAddSubjectModal) {
               onOpenAddSubjectModal();
@@ -184,7 +184,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
           },
         },
         {
-          text: '🚨 Jadwal Ujian / PTS / PAS',
+          text: 'Jadwal Ujian / PTS / PAS',
           onPress: () => setIsExamModalVisible(true),
         },
       ]

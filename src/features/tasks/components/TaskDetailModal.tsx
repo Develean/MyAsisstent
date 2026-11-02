@@ -79,7 +79,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     dispatch(toggleTaskCompletion(task.id));
     if (willComplete) {
       dispatch(addExp(20));
-      showToast('Tugas Tuntas! 🎉', '+20 EXP berhasil didapatkan', 'exp');
+      showToast('Tugas Tuntas!', '+20 EXP berhasil didapatkan', 'exp');
     } else {
       showToast('Status Tugas Diperbarui', 'Tugas dikembalikan ke antrean aktif', 'info');
     }
@@ -89,7 +89,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     dispatch(toggleSubtaskCompletion({ taskId: task.id, subtaskId: subId }));
     if (!currentCompleted) {
       dispatch(addExp(5));
-      showToast('Langkah Mini Selesai! ⭐', '+5 EXP ditambahkan', 'exp');
+      showToast('Langkah Mini Selesai!', '+5 EXP ditambahkan', 'exp');
     } else {
       showToast('Subtask Diperbarui', 'Subtask dikembalikan', 'info');
     }
@@ -99,13 +99,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     if (!newSubtaskTitle.trim()) return;
     const title = newSubtaskTitle.trim();
     dispatch(addSubtask({ taskId: task.id, title }));
-    showToast('Langkah Ditambahkan 📝', title, 'info');
+    showToast('Langkah Ditambahkan', title, 'info');
     setNewSubtaskTitle('');
   };
 
   const handleAutoBreakdown = () => {
     dispatch(autoBreakdownTask({ taskId: task.id }));
-    showToast('Langkah Mini Dibuat! ⚡', 'Tugas dipecah otomatis jadi 3 langkah', 'success');
+    showToast('Langkah Mini Dibuat', 'Tugas dipecah otomatis jadi 3 langkah', 'success');
   };
 
   const handleStartFocus = () => {
@@ -189,7 +189,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <TouchableOpacity style={styles.autoBreakdownBtn} onPress={handleAutoBreakdown}>
                   <Sparkles size={16} color="#2563EB" />
                   <Text style={styles.autoBreakdownText}>
-                    ⚡ Pecah Jadi Langkah-Langkah Mini (Otomatis)
+                    Pecah Jadi Langkah-Langkah Mini (Otomatis)
                   </Text>
                 </TouchableOpacity>
               )}

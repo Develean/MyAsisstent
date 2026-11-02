@@ -39,12 +39,12 @@ const MOOD_CONFIGS: Record<MascotMood, MascotStateConfig> = {
 
 const QUOTES = [
   'Halo! 3 hari lagi ada PTS Matematika Wajib lho. Yuk cicil 1 sesi fokus!',
-  'Semangat belajarnya hari ini! Jangan lupa minum air & istirahat ya 💧',
-  'Streak 4 hari kamu keren banget! Jaga terus apinya jangan sampai padam 🔥',
-  'Tinggal 350 EXP lagi nih buat naik ke Level 4! Mau cicil tugas bareng aku? ⭐',
-  'Wah geli tahu disentuh-sentuh! Hehehe... Makasih ya, aku makin semangat! 🥰',
-  'Kamu sudah tuntasin banyak tugas! Kalau penat, ambil jeda 5 menit dulu yuk ☕',
-  'Psst... kalau rajin fokus sampai Level 5, aku bakal pakai kostum wisuda lho! 🎓',
+  'Semangat belajarnya hari ini! Jangan lupa minum air & istirahat ya.',
+  'Streak 4 hari kamu keren banget! Jaga terus konsistensinya ya!',
+  'Tinggal 350 EXP lagi nih buat naik ke Level 4! Mau cicil tugas bareng aku?',
+  'Wah geli tahu disentuh-sentuh! Hehehe... Makasih ya, aku makin semangat!',
+  'Kamu sudah tuntasin banyak tugas! Kalau penat, ambil jeda 5 menit dulu yuk.',
+  'Psst... kalau rajin fokus sampai Level 5, aku bakal pakai kostum wisuda lho!',
 ];
 
 interface MascotPuppetViewProps {

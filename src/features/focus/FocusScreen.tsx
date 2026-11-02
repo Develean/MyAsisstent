@@ -38,6 +38,7 @@ import {
   ChevronDown,
   X,
   Plus,
+  Info,
 } from 'lucide-react-native';
 import { AnimatedCheckbox } from '../../shared/components/AnimatedCheckbox';
 import { ActionFeedbackToast, ToastType } from '../../shared/components/ActionFeedbackToast';
@@ -137,7 +138,7 @@ export const FocusScreen: React.FC = () => {
     if (focus.remainingSeconds === 0 && !focus.isRunning) {
       dispatch(addExp(10));
       setSessionCompletedCelebration(true);
-      showToast('Sesi Fokus Tuntas! 🎉', '+10 EXP berhasil diklaim', 'exp');
+      showToast('Sesi Fokus Tuntas!', '+10 EXP berhasil diklaim', 'exp');
       setTimeout(() => setSessionCompletedCelebration(false), 4500);
     }
   }, [focus.remainingSeconds, focus.isRunning, dispatch]);
@@ -171,7 +172,7 @@ export const FocusScreen: React.FC = () => {
       dispatch(toggleSubtaskCompletion({ taskId: activeTask.id, subtaskId }));
       if (!currentCompleted) {
         dispatch(addExp(5));
-        showToast('Langkah Mini Tuntas! ⭐', '+5 EXP ditambahkan', 'exp');
+        showToast('Langkah Mini Tuntas!', '+5 EXP ditambahkan', 'exp');
       } else {
         showToast('Subtask Diperbarui', 'Subtask dikembalikan', 'info');
       }
@@ -183,7 +184,7 @@ export const FocusScreen: React.FC = () => {
     if (activeTask) {
       const title = newSubtaskTitle.trim();
       dispatch(addSubtask({ taskId: activeTask.id, title }));
-      showToast('Langkah Ditambahkan 📝', title, 'info');
+      showToast('Langkah Ditambahkan', title, 'info');
       setNewSubtaskTitle('');
     } else {
       Alert.alert('Info', 'Pilih tugas terlebih dahulu untuk menambahkan subtask.');
@@ -199,15 +200,15 @@ export const FocusScreen: React.FC = () => {
     const nextRunning = !focus.isRunning;
     dispatch(togglePlayPause());
     if (nextRunning) {
-      showToast('Timer Dimulai ⏱️', 'Fokus dan kurangi distraksi!', 'info');
+      showToast('Timer Dimulai', 'Fokus dan kurangi distraksi!', 'info');
     } else {
-      showToast('Timer Dijeda ⏸️', 'Istirahat sejenak atau lanjutkan kembali', 'info');
+      showToast('Timer Dijeda', 'Istirahat sejenak atau lanjutkan kembali', 'info');
     }
   };
 
   const handleResetTimer = () => {
     dispatch(resetTimer());
-    showToast('Timer Direset 🔄', `Waktu dikembalikan ke ${focus.durationMinutes || 25} menit`, 'info');
+    showToast('Timer Direset', `Waktu dikembalikan ke ${focus.durationMinutes || 25} menit`, 'info');
   };
 
   const handleApplyCustomMinutes = () => {
@@ -245,7 +246,7 @@ export const FocusScreen: React.FC = () => {
           <View style={styles.celebrationBanner}>
             <Sparkles size={18} color="#059669" />
             <Text style={styles.celebrationText}>
-              Sesi Fokus Tuntas! Kamu mendapatkan +10 EXP 🎉
+              Sesi Fokus Tuntas! Kamu mendapatkan +10 EXP
             </Text>
           </View>
         )}
@@ -504,8 +505,9 @@ export const FocusScreen: React.FC = () => {
               </TouchableOpacity>
             ) : (
               <View style={styles.guidanceTipsBox}>
+                <Info size={14} color="#64748B" style={{ marginRight: 6 }} />
                 <Text style={styles.guidanceTipsText}>
-                  💡 Belum ada tugas terdaftar. Belajar mandiri tetap menghasilkan EXP setiap sesi tuntas!
+                  Belum ada tugas terdaftar. Belajar mandiri tetap menghasilkan EXP setiap sesi tuntas!
                 </Text>
               </View>
             )}
@@ -1121,6 +1123,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   guidanceTipsBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#F8FAFC',
     borderRadius: 12,
     paddingHorizontal: 14,
@@ -1133,7 +1138,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#64748B',
-    textAlign: 'center',
     lineHeight: 16,
+    flexShrink: 1,
   },
 });

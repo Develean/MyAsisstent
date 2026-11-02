@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch } from '../../store/store';
 import { completeOnboarding } from '../user/userSlice';
 import { LocalDataRepository } from '../../db/repository';
+import { Calendar, Clock, Sparkles, ArrowRight } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -23,21 +24,24 @@ const slides = [
     title: 'Jadwal & Countdown Ujian',
     desc: 'Atur jadwal kelas mingguan dan pantau hitung mundur ujian (H-5) agar kamu selalu siap belajar tanpa panik sistem kebut semalam!',
     image: require('../../../assets/semangat.png'),
-    badge: '📅 Jadwal Adaptif',
+    badge: 'Jadwal Adaptif',
+    icon: <Calendar size={13} color="#2563EB" />,
   },
   {
     id: 2,
     title: 'Timer Pomodoro & Kustom',
     desc: 'Cicil belajarmu dengan timer fokus 25/50 menit atau atur durasi bebas sesuai ritme belajarmu. Bebas distraksi dan 100% offline!',
     image: require('../../../assets/fokus.png'),
-    badge: '⏱️ Mode Fokus',
+    badge: 'Mode Fokus',
+    icon: <Clock size={13} color="#2563EB" />,
   },
   {
     id: 3,
     title: 'Maskot Teman Belajar Pintar',
     desc: 'Ditemani maskot hamster ceria yang hidup! Wajahnya berubah sesuai sisa deadline, melirik, dan selalu siap menemani harimu.',
     image: require('../../../assets/senang.png'),
-    badge: '🐹 Maskot Interaktif',
+    badge: 'Maskot Interaktif',
+    icon: <Sparkles size={13} color="#2563EB" />,
   },
 ];
 
@@ -130,7 +134,8 @@ export const OnboardingScreen: React.FC = () => {
             </View>
 
             {/* Feature Badge */}
-            <View className="bg-primary-light border border-primary-border px-3 py-1.5 rounded-full mb-3">
+            <View className="flex-row items-center bg-primary-light border border-primary-border px-3 py-1.5 rounded-full mb-3 gap-1.5">
+              {slides[activeSlide].icon}
               <Text className="text-primary font-bold text-xs">
                 {slides[activeSlide].badge}
               </Text>
@@ -154,7 +159,7 @@ export const OnboardingScreen: React.FC = () => {
                 resizeMode="contain"
               />
               <Text className="text-2xl font-extrabold text-typography-main text-center">
-                Kenalan Dulu Yuk! 🐹
+                Kenalan Dulu Yuk!
               </Text>
               <Text className="text-typography-muted text-center text-xs mt-1 px-6">
                 Siapa nama panggilanmu? Maskot kami ingin menyapamu setiap hari.
@@ -216,18 +221,20 @@ export const OnboardingScreen: React.FC = () => {
           <TouchableOpacity
             onPress={handleNext}
             disabled={isButtonDisabled}
-            className={`rounded-2xl py-4 items-center justify-center shadow-lg active:scale-95 ${
+            className={`rounded-2xl py-4 flex-row items-center justify-center shadow-lg active:scale-95 gap-2 ${
               isButtonDisabled ? 'bg-slate-300' : 'bg-primary'
             }`}
             style={{ elevation: isButtonDisabled ? 0 : 4 }}
           >
             <Text className="text-white font-bold text-base">
               {activeSlide < 3
-                ? 'Lanjut ➔'
+                ? 'Lanjut'
                 : isNameValid
-                ? 'Mulai Belajar Sekarang 🚀'
-                : 'Isi Nama Panggilan Dulu ✍️'}
+                ? 'Mulai Belajar Sekarang'
+                : 'Isi Nama Panggilan Terlebih Dahulu'}
             </Text>
+            {activeSlide < 3 && <ArrowRight size={18} color="#FFFFFF" />}
+            {activeSlide === 3 && isNameValid && <ArrowRight size={18} color="#FFFFFF" />}
           </TouchableOpacity>
         </View>
       </View>

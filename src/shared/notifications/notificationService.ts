@@ -65,7 +65,7 @@ export class LocalNotificationService {
       if (triggerDateH1.getTime() > Date.now()) {
         const notifId = await Notifications.scheduleNotificationAsync({
           content: {
-            title: '🐹 Maskot: Deadline Besok!',
+            title: 'Maskot: Deadline Besok!',
             body: `Tugas "${taskTitle}" harus dikumpulkan besok. Yuk cicil 1 sesi fokus sekarang biar ga panik!`,
             data: { taskId, type: 'task_h1' },
             sound: true,
@@ -102,7 +102,7 @@ export class LocalNotificationService {
       if (triggerDate.getTime() > Date.now()) {
         const notifId = await Notifications.scheduleNotificationAsync({
           content: {
-            title: `📅 Maskot: Ujian ${examTitle} Tinggal Sedikit Lagi!`,
+            title: `Maskot: Ujian ${examTitle} Tinggal Sedikit Lagi!`,
             body: `Ujian "${examTitle}" tinggal ${daysLeft} hari lagi. Buka aplikasi untuk review catatan!`,
             data: { examId, type: 'exam_countdown' },
             sound: true,
