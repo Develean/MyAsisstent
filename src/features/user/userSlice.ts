@@ -13,14 +13,14 @@ export interface UserState {
 }
 
 const initialState: UserState = {
-  name: 'Develean',
-  school: 'SMAN 1 Jakarta',
-  grade: 'Kelas 11 MIPA 2',
-  currentLevel: 3,
-  levelTitle: 'Scholar',
-  currentExp: 650,
-  maxExp: 1000,
-  streakDays: 4,
+  name: '',
+  school: '',
+  grade: '',
+  currentLevel: 1,
+  levelTitle: 'Pelajar Baru',
+  currentExp: 0,
+  maxExp: 100,
+  streakDays: 0,
   hasCompletedOnboarding: false,
 };
 
@@ -28,13 +28,24 @@ export const userSlice = createSlice({
   name: 'user',
   initialState,
   reducers: {
+    setUserProfile: (state, action: PayloadAction<UserState>) => {
+      return { ...state, ...action.payload };
+    },
+    updateProfile: (
+      state,
+      action: PayloadAction<{ name: string; school?: string; grade?: string }>
+    ) => {
+      state.name = action.payload.name.trim();
+      if (action.payload.school !== undefined) state.school = action.payload.school.trim();
+      if (action.payload.grade !== undefined) state.grade = action.payload.grade.trim();
+    },
     completeOnboarding: (
       state,
       action: PayloadAction<{ name: string; school?: string; grade?: string }>
     ) => {
-      state.name = action.payload.name.trim() || 'Teman Belajar';
-      if (action.payload.school) state.school = action.payload.school;
-      if (action.payload.grade) state.grade = action.payload.grade;
+      state.name = action.payload.name.trim();
+      state.school = action.payload.school ? action.payload.school.trim() : '';
+      state.grade = action.payload.grade ? action.payload.grade.trim() : '';
       state.hasCompletedOnboarding = true;
     },
     addExp: (state, action: PayloadAction<number>) => {
@@ -56,6 +67,13 @@ export const userSlice = createSlice({
   },
 });
 
-export const { completeOnboarding, addExp, incrementStreak, resetOnboarding } = userSlice.actions;
+export const {
+  setUserProfile,
+  updateProfile,
+  completeOnboarding,
+  addExp,
+  incrementStreak,
+  resetOnboarding,
+} = userSlice.actions;
 export default userSlice.reducer;
 

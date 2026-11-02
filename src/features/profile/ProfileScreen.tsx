@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { useAppSelector, useAppDispatch } from '../../store/store';
 import { addExp } from '../user/userSlice';
 import { MascotPuppetView } from './mascot/MascotPuppetView';
 import { Cloud, Settings } from 'lucide-react-native';
+import { EditProfileModal } from './components/EditProfileModal';
 
 export const ProfileScreen: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -21,6 +22,8 @@ export const ProfileScreen: React.FC = () => {
   const user = useAppSelector((state) => state.user);
   const tasks = useAppSelector((state) => state.tasks.tasks);
   const focus = useAppSelector((state) => state.focus);
+
+  const [isEditProfileVisible, setIsEditProfileVisible] = useState(false);
 
   const completedTasksCount = tasks.filter((t) => t.isCompleted).length;
   const focusSessionsCount = focus.completedSessions || 0;
@@ -63,7 +66,8 @@ export const ProfileScreen: React.FC = () => {
           <TouchableOpacity
             style={styles.settingsBtn}
             activeOpacity={0.8}
-            onPress={() => Alert.alert('Pengaturan', 'Akun: Develean (Kelas 11 MIPA 2)')}
+            onPress={() => setIsEditProfileVisible(true)}
+            accessibilityLabel="Edit Profil"
           >
             <Settings size={18} color="#4A5670" />
           </TouchableOpacity>
@@ -74,10 +78,16 @@ export const ProfileScreen: React.FC = () => {
           <MascotPuppetView onExpReward={handleExpBonus} />
 
           {/* User Name & Class */}
-          <Text style={styles.profileName}>{user.name || 'Develean'}</Text>
-          <Text style={styles.profileSchool}>
-            {user.school ? `${user.school} · ` : 'SMAN 1 Jakarta · '}{user.grade || 'Kelas 11 MIPA 2'}
-          </Text>
+          <Text style={styles.profileName}>{user.name || 'Teman Belajar'}</Text>
+          {(user.school || user.grade) ? (
+            <Text style={styles.profileSchool}>
+              {user.school && user.grade
+                ? `${user.school} · ${user.grade}`
+                : user.school || user.grade}
+            </Text>
+          ) : (
+            <Text style={styles.profileSchool}>Belajar Mandiri</Text>
+          )}
 
           {/* EXP Level Badge Card (Image 2) */}
           <View style={styles.expCard}>
@@ -255,6 +265,12 @@ export const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Modal Edit Profil Pengguna */}
+      <EditProfileModal
+        visible={isEditProfileVisible}
+        onClose={() => setIsEditProfileVisible(false)}
+      />
     </View>
   );
 };

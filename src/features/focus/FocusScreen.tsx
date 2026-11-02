@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   StatusBar,
   Alert,
   Modal,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
@@ -36,8 +37,10 @@ import {
   Sparkles,
   ChevronDown,
   X,
-  Check,
+  Plus,
 } from 'lucide-react-native';
+import { AnimatedCheckbox } from '../../shared/components/AnimatedCheckbox';
+import { ActionFeedbackToast, ToastType } from '../../shared/components/ActionFeedbackToast';
 
 export const FocusScreen: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -50,6 +53,56 @@ export const FocusScreen: React.FC = () => {
   const [customInputText, setCustomInputText] = useState('');
   const [isTaskPickerOpen, setIsTaskPickerOpen] = useState(false);
   const [sessionCompletedCelebration, setSessionCompletedCelebration] = useState(false);
+
+  // Toast Action Feedback State
+  const [toast, setToast] = useState<{
+    visible: boolean;
+    message: string;
+    subMessage?: string;
+    type: ToastType;
+  }>({
+    visible: false,
+    message: '',
+    subMessage: '',
+    type: 'success',
+  });
+
+  const showToast = (message: string, subMessage?: string, type: ToastType = 'success') => {
+    setToast({ visible: true, message, subMessage, type });
+  };
+
+  // Live Timer Breathing Pulse Animation
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    let animLoop: Animated.CompositeAnimation | null = null;
+    if (focus.isRunning) {
+      animLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.04,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animLoop.start();
+    } else {
+      Animated.timing(pulseAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+    return () => {
+      if (animLoop) animLoop.stop();
+    };
+  }, [focus.isRunning, pulseAnim]);
 
   const getTaskSubjectName = (task?: TaskWithSubtasks) => {
     if (!task) return 'Fisika';
@@ -84,6 +137,7 @@ export const FocusScreen: React.FC = () => {
     if (focus.remainingSeconds === 0 && !focus.isRunning) {
       dispatch(addExp(10));
       setSessionCompletedCelebration(true);
+      showToast('Sesi Fokus Tuntas! 🎉', '+10 EXP berhasil diklaim', 'exp');
       setTimeout(() => setSessionCompletedCelebration(false), 4500);
     }
   }, [focus.remainingSeconds, focus.isRunning, dispatch]);
@@ -112,21 +166,48 @@ export const FocusScreen: React.FC = () => {
   const circumference = 2 * Math.PI * 100; // r = 100
   const strokeDashoffset = circumference * (1 - progressRatio);
 
-  const handleToggleSubtask = (subtaskId: number) => {
+  const handleToggleSubtask = (subtaskId: number, currentCompleted: boolean) => {
     if (activeTask) {
       dispatch(toggleSubtaskCompletion({ taskId: activeTask.id, subtaskId }));
-      dispatch(addExp(2));
+      if (!currentCompleted) {
+        dispatch(addExp(5));
+        showToast('Langkah Mini Tuntas! ⭐', '+5 EXP ditambahkan', 'exp');
+      } else {
+        showToast('Subtask Diperbarui', 'Subtask dikembalikan', 'info');
+      }
     }
   };
 
   const handleAddNewSubtask = () => {
     if (!newSubtaskTitle.trim()) return;
     if (activeTask) {
-      dispatch(addSubtask({ taskId: activeTask.id, title: newSubtaskTitle.trim() }));
+      const title = newSubtaskTitle.trim();
+      dispatch(addSubtask({ taskId: activeTask.id, title }));
+      showToast('Langkah Ditambahkan 📝', title, 'info');
       setNewSubtaskTitle('');
     } else {
       Alert.alert('Info', 'Pilih tugas terlebih dahulu untuk menambahkan subtask.');
     }
+  };
+
+  const handleSelectPreset = (mins: number) => {
+    dispatch(setDuration(mins));
+    showToast('Durasi Disetel', `${mins} menit sesi fokus`, 'info');
+  };
+
+  const handleTogglePlay = () => {
+    const nextRunning = !focus.isRunning;
+    dispatch(togglePlayPause());
+    if (nextRunning) {
+      showToast('Timer Dimulai ⏱️', 'Fokus dan kurangi distraksi!', 'info');
+    } else {
+      showToast('Timer Dijeda ⏸️', 'Istirahat sejenak atau lanjutkan kembali', 'info');
+    }
+  };
+
+  const handleResetTimer = () => {
+    dispatch(resetTimer());
+    showToast('Timer Direset 🔄', `Waktu dikembalikan ke ${focus.durationMinutes || 25} menit`, 'info');
   };
 
   const handleApplyCustomMinutes = () => {
@@ -138,6 +219,7 @@ export const FocusScreen: React.FC = () => {
     dispatch(setCustomDuration(val));
     setIsCustomModalOpen(false);
     setCustomInputText('');
+    showToast('Durasi Kustom Disetel', `${val} menit sesi fokus`, 'info');
   };
 
   const insets = useSafeAreaInsets();
@@ -199,8 +281,16 @@ export const FocusScreen: React.FC = () => {
           </TouchableOpacity>
         ) : null}
 
-        {/* Circular Timer Ring (Exact styling from Image) */}
-        <View style={styles.timerRingContainer}>
+        {/* Circular Timer Ring with Live Pulse when Running */}
+        <Animated.View
+          style={[
+            styles.timerRingContainer,
+            {
+              transform: [{ scale: pulseAnim }],
+            },
+          ]}
+        >
+          {focus.isRunning && <View style={styles.timerPulsingHalo} />}
           <Svg width={240} height={240} viewBox="0 0 240 240" style={styles.timerSvg}>
             {/* Background Track Circle */}
             <Circle
@@ -230,8 +320,18 @@ export const FocusScreen: React.FC = () => {
             <Text style={styles.timerSubLabel}>
               dari {focus.durationMinutes || 25} menit
             </Text>
+            {focus.isRunning ? (
+              <View style={styles.timerRunningIndicator}>
+                <View style={styles.timerRunningDot} />
+                <Text style={styles.timerRunningText}>Sedang Berjalan</Text>
+              </View>
+            ) : (
+              <View style={styles.timerPausedIndicator}>
+                <Text style={styles.timerPausedText}>Siap Belajar</Text>
+              </View>
+            )}
           </View>
-        </View>
+        </Animated.View>
 
         {/* Duration Chips (25 mnt / 50 mnt / Kustom) */}
         <View style={styles.presetChipsRow}>
@@ -240,7 +340,7 @@ export const FocusScreen: React.FC = () => {
               styles.presetChip,
               focus.durationMinutes === 25 && styles.presetChipActive,
             ]}
-            onPress={() => dispatch(setDuration(25))}
+            onPress={() => handleSelectPreset(25)}
             activeOpacity={0.8}
           >
             <Text
@@ -258,7 +358,7 @@ export const FocusScreen: React.FC = () => {
               styles.presetChip,
               focus.durationMinutes === 50 && styles.presetChipActive,
             ]}
-            onPress={() => dispatch(setDuration(50))}
+            onPress={() => handleSelectPreset(50)}
             activeOpacity={0.8}
           >
             <Text
@@ -301,7 +401,7 @@ export const FocusScreen: React.FC = () => {
           {/* Big Blue Play / Pause Button: 76x76px */}
           <TouchableOpacity
             style={styles.mainPlayPauseButton}
-            onPress={() => dispatch(togglePlayPause())}
+            onPress={handleTogglePlay}
             activeOpacity={0.85}
           >
             {focus.isRunning ? (
@@ -314,9 +414,7 @@ export const FocusScreen: React.FC = () => {
           {/* Secondary Stop / Reset Button: 56x56px */}
           <TouchableOpacity
             style={styles.secondaryStopButton}
-            onPress={() => {
-              dispatch(resetTimer());
-            }}
+            onPress={handleResetTimer}
             activeOpacity={0.8}
           >
             <Square size={20} color="#0F1B33" fill="#0F1B33" />
@@ -324,7 +422,7 @@ export const FocusScreen: React.FC = () => {
         </View>
 
         {/* BOX SUBTASK (HANYA MUNCUL JIKA ADA TUGAS YANG DIKERJAKAN) */}
-        {activeTask && (
+        {activeTask ? (
           <View style={styles.subtaskCard}>
             <View style={styles.subtaskHeaderRow}>
               <Text style={styles.subtaskTitle}>Subtask / Langkah Kerja</Text>
@@ -339,29 +437,22 @@ export const FocusScreen: React.FC = () => {
             {subtasks.length > 0 ? (
               <View style={styles.subtaskList}>
                 {subtasks.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.subtaskItemRow}
-                    onPress={() => handleToggleSubtask(item.id)}
-                    activeOpacity={0.8}
-                  >
-                    <View
-                      style={[
-                        styles.checkboxBox,
-                        item.isCompleted && styles.checkboxBoxChecked,
-                      ]}
-                    >
-                      {item.isCompleted && <Check size={13} color="#FFFFFF" strokeWidth={3} />}
-                    </View>
+                  <View key={item.id} style={styles.subtaskItemRow}>
+                    <AnimatedCheckbox
+                      checked={item.isCompleted}
+                      onPress={() => handleToggleSubtask(item.id, item.isCompleted)}
+                      size={20}
+                    />
                     <Text
                       style={[
                         styles.subtaskItemText,
                         item.isCompleted && styles.subtaskItemTextDone,
                       ]}
+                      onPress={() => handleToggleSubtask(item.id, item.isCompleted)}
                     >
                       {item.title}
                     </Text>
-                  </TouchableOpacity>
+                  </View>
                 ))}
               </View>
             ) : (
@@ -389,6 +480,35 @@ export const FocusScreen: React.FC = () => {
                 <Text style={styles.addSubtaskBtnText}>+ Tambah</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        ) : (
+          /* GUIDANCE EMPTY STATE: Mode Fokus Bebas / Belajar Mandiri */
+          <View style={styles.freeFocusGuidanceCard}>
+            <View style={styles.guidanceIconCircle}>
+              <Sparkles size={24} color="#2563EB" />
+            </View>
+            <Text style={styles.guidanceTitle}>Mode Belajar Mandiri Aktif</Text>
+            <Text style={styles.guidanceSubtitle}>
+              Timer Pomodoro siap menemani sesi belajar bebasmu. Ingin checklist langkah kerja terstruktur? Kaitkan dengan tugas aktif di bawah.
+            </Text>
+            {tasks.filter((t) => !t.isCompleted).length > 0 ? (
+              <TouchableOpacity
+                style={styles.guidanceCtaBtn}
+                onPress={() => setIsTaskPickerOpen(true)}
+                activeOpacity={0.85}
+              >
+                <Sparkles size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.guidanceCtaText}>
+                  Kaitkan dengan Tugas ({tasks.filter((t) => !t.isCompleted).length} Tugas Aktif)
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.guidanceTipsBox}>
+                <Text style={styles.guidanceTipsText}>
+                  💡 Belum ada tugas terdaftar. Belajar mandiri tetap menghasilkan EXP setiap sesi tuntas!
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -504,6 +624,16 @@ export const FocusScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Floating Action Feedback Toast */}
+      <ActionFeedbackToast
+        visible={toast.visible}
+        message={toast.message}
+        subMessage={toast.subMessage}
+        type={toast.type}
+        onDismiss={() => setToast((prev) => ({ ...prev, visible: false }))}
+        topOffset={topPadding + 10}
+      />
     </View>
   );
 };
@@ -891,5 +1021,119 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 14,
+  },
+  timerPulsingHalo: {
+    position: 'absolute',
+    width: 216,
+    height: 216,
+    borderRadius: 108,
+    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+  },
+  timerRunningIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+    marginTop: 6,
+  },
+  timerRunningDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#2563EB',
+  },
+  timerRunningText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  timerPausedIndicator: {
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: '#F1F5F9',
+  },
+  timerPausedText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  freeFocusGuidanceCard: {
+    marginTop: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#EDF1F7',
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  guidanceIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  guidanceTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F1B33',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  guidanceSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 10,
+    marginBottom: 16,
+  },
+  guidanceCtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 999,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  guidanceCtaText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  guidanceTipsBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    width: '100%',
+  },
+  guidanceTipsText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });

@@ -288,5 +288,77 @@ export class LocalDataRepository {
       console.warn('Failed to delete exam from SQLite:', err);
     }
   }
+
+  /**
+   * Load user profile from SQLite
+   */
+  static loadUserProfile(): {
+    name: string;
+    school: string;
+    grade: string;
+    currentLevel: number;
+    levelTitle: string;
+    currentExp: number;
+    maxExp: number;
+    streakDays: number;
+    hasCompletedOnboarding: boolean;
+  } | null {
+    try {
+      const db = getDb();
+      const row = db.getFirstSync<any>('SELECT * FROM user_profile WHERE id = 1;');
+      if (!row) return null;
+      return {
+        name: row.name || '',
+        school: row.school || '',
+        grade: row.grade || '',
+        currentLevel: row.current_level || 1,
+        levelTitle: row.level_title || 'Pelajar Baru',
+        currentExp: row.current_exp || 0,
+        maxExp: row.max_exp || 100,
+        streakDays: row.streak_days || 0,
+        hasCompletedOnboarding: Boolean(row.has_completed_onboarding),
+      };
+    } catch (err) {
+      console.warn('Failed to load user profile from SQLite:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Save user profile to SQLite
+   */
+  static saveUserProfile(profile: {
+    name: string;
+    school?: string;
+    grade?: string;
+    currentLevel?: number;
+    levelTitle?: string;
+    currentExp?: number;
+    maxExp?: number;
+    streakDays?: number;
+    hasCompletedOnboarding?: boolean;
+  }): void {
+    try {
+      const db = getDb();
+      db.runSync(
+        `INSERT OR REPLACE INTO user_profile (
+          id, name, school, grade, current_level, level_title, current_exp, max_exp, streak_days, has_completed_onboarding
+        ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        [
+          profile.name,
+          profile.school || '',
+          profile.grade || '',
+          profile.currentLevel ?? 1,
+          profile.levelTitle || 'Pelajar Baru',
+          profile.currentExp ?? 0,
+          profile.maxExp ?? 100,
+          profile.streakDays ?? 0,
+          profile.hasCompletedOnboarding ? 1 : 0,
+        ]
+      );
+    } catch (err) {
+      console.warn('Failed to save user profile to SQLite:', err);
+    }
+  }
 }
 

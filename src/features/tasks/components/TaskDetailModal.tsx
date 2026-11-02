@@ -22,18 +22,18 @@ import {
   deleteTask,
 } from '../taskSlice';
 import { setActiveTask } from '../../focus/focusSlice';
+import { addExp } from '../../user/userSlice';
 import { LocalDataRepository } from '../../../db/repository';
 import {
   X,
-  CheckCircle2,
-  Circle,
   Plus,
   Trash2,
   Sparkles,
   Clock,
   Play,
-  CheckSquare,
 } from 'lucide-react-native';
+import { AnimatedCheckbox } from '../../../shared/components/AnimatedCheckbox';
+import { ActionFeedbackToast, ToastType } from '../../../shared/components/ActionFeedbackToast';
 
 interface TaskDetailModalProps {
   task: TaskWithSubtasks | null;
@@ -51,20 +51,61 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const dispatch = useAppDispatch();
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
+  // Toast Action Feedback State
+  const [toast, setToast] = useState<{
+    visible: boolean;
+    message: string;
+    subMessage?: string;
+    type: ToastType;
+  }>({
+    visible: false,
+    message: '',
+    subMessage: '',
+    type: 'success',
+  });
+
+  const showToast = (message: string, subMessage?: string, type: ToastType = 'success') => {
+    setToast({ visible: true, message, subMessage, type });
+  };
+
   if (!task) return null;
 
   const totalSubtasks = task.subtasks.length;
   const completedSubtasks = task.subtasks.filter((s) => s.isCompleted).length;
   const progressPercent = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : task.isCompleted ? 100 : 0;
 
+  const handleToggleMainTask = () => {
+    const willComplete = !task.isCompleted;
+    dispatch(toggleTaskCompletion(task.id));
+    if (willComplete) {
+      dispatch(addExp(20));
+      showToast('Tugas Tuntas! 🎉', '+20 EXP berhasil didapatkan', 'exp');
+    } else {
+      showToast('Status Tugas Diperbarui', 'Tugas dikembalikan ke antrean aktif', 'info');
+    }
+  };
+
+  const handleToggleSubtask = (subId: number, currentCompleted: boolean) => {
+    dispatch(toggleSubtaskCompletion({ taskId: task.id, subtaskId: subId }));
+    if (!currentCompleted) {
+      dispatch(addExp(5));
+      showToast('Langkah Mini Selesai! ⭐', '+5 EXP ditambahkan', 'exp');
+    } else {
+      showToast('Subtask Diperbarui', 'Subtask dikembalikan', 'info');
+    }
+  };
+
   const handleAddSubtask = () => {
     if (!newSubtaskTitle.trim()) return;
-    dispatch(addSubtask({ taskId: task.id, title: newSubtaskTitle.trim() }));
+    const title = newSubtaskTitle.trim();
+    dispatch(addSubtask({ taskId: task.id, title }));
+    showToast('Langkah Ditambahkan 📝', title, 'info');
     setNewSubtaskTitle('');
   };
 
   const handleAutoBreakdown = () => {
     dispatch(autoBreakdownTask({ taskId: task.id }));
+    showToast('Langkah Mini Dibuat! ⚡', 'Tugas dipecah otomatis jadi 3 langkah', 'success');
   };
 
   const handleStartFocus = () => {
@@ -118,18 +159,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* Task Title & Status Toggle */}
+              {/* Task Title & Animated Status Toggle */}
               <View style={styles.titleRow}>
-                <TouchableOpacity
-                  onPress={() => dispatch(toggleTaskCompletion(task.id))}
-                  style={styles.checkButton}
-                >
-                  {task.isCompleted ? (
-                    <CheckCircle2 size={24} color="#10B981" />
-                  ) : (
-                    <Circle size={24} color="#CBD5E1" />
-                  )}
-                </TouchableOpacity>
+                <AnimatedCheckbox
+                  checked={task.isCompleted}
+                  onPress={handleToggleMainTask}
+                  size={24}
+                />
                 <Text style={[styles.taskTitle, task.isCompleted && styles.taskTitleCompleted]}>
                   {task.title}
                 </Text>
@@ -162,33 +198,37 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               <Text style={styles.sectionSubtitle}>Langkah-Langkah Pengerjaan (Subtasks):</Text>
               <ScrollView style={styles.subtaskScroll} showsVerticalScrollIndicator={false}>
                 {totalSubtasks === 0 ? (
-                  <View style={styles.emptySubtasks}>
-                    <Text style={styles.emptySubtasksText}>
-                      Belum ada subtask. Tap tombol "Pecah Otomatis" di atas atau tulis langkah pengerjaanmu di bawah!
+                  <View style={styles.actionableEmptySubtasksCard}>
+                    <View style={styles.emptySubtaskIconCircle}>
+                      <Sparkles size={18} color="#2563EB" />
+                    </View>
+                    <Text style={styles.emptySubtaskTitle}>Tugas Masih Utuh & Berat?</Text>
+                    <Text style={styles.emptySubtaskSubtitle}>
+                      Pecah tugas ini jadi potongan langkah mini 10-15 menitan agar pikiran tidak jenuh dan cepat selesai.
                     </Text>
+                    <TouchableOpacity
+                      style={styles.emptySubtaskCtaBtn}
+                      onPress={handleAutoBreakdown}
+                      activeOpacity={0.85}
+                    >
+                      <Sparkles size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.emptySubtaskCtaText}>Pecah Otomatis Sekarang</Text>
+                    </TouchableOpacity>
                   </View>
                 ) : (
                   task.subtasks.map((sub) => (
                     <View key={sub.id} style={styles.subtaskItem}>
-                      <TouchableOpacity
-                        onPress={() =>
-                          dispatch(
-                            toggleSubtaskCompletion({ taskId: task.id, subtaskId: sub.id })
-                          )
-                        }
-                        style={styles.subtaskCheckBtn}
-                      >
-                        {sub.isCompleted ? (
-                          <CheckSquare size={18} color="#2563EB" />
-                        ) : (
-                          <View style={styles.uncheckedBox} />
-                        )}
-                      </TouchableOpacity>
+                      <AnimatedCheckbox
+                        checked={sub.isCompleted}
+                        onPress={() => handleToggleSubtask(sub.id, sub.isCompleted)}
+                        size={19}
+                      />
                       <Text
                         style={[
                           styles.subtaskTitle,
                           sub.isCompleted && styles.subtaskTitleCompleted,
                         ]}
+                        onPress={() => handleToggleSubtask(sub.id, sub.isCompleted)}
                       >
                         {sub.title}
                       </Text>
@@ -231,6 +271,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   <Trash2 size={18} color="#EF4444" />
                 </TouchableOpacity>
               </View>
+
+              {/* Floating Action Feedback Toast */}
+              <ActionFeedbackToast
+                visible={toast.visible}
+                message={toast.message}
+                subMessage={toast.subMessage}
+                type={toast.type}
+                onDismiss={() => setToast((prev) => ({ ...prev, visible: false }))}
+                topOffset={20}
+              />
             </KeyboardAvoidingView>
           </TouchableWithoutFeedback>
         </View>
@@ -468,6 +518,53 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  actionableEmptySubtasksCard: {
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#EDF1F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptySubtaskIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  emptySubtaskTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F1B33',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  emptySubtaskSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#64748B',
+    lineHeight: 16,
+    textAlign: 'center',
+    paddingHorizontal: 8,
+    marginBottom: 12,
+  },
+  emptySubtaskCtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  emptySubtaskCtaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
 

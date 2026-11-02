@@ -24,7 +24,13 @@ import {
   Flame,
   User as UserIcon,
   ChevronRight,
+  Calendar,
+  CheckCircle2,
+  Plus,
+  Sparkles,
+  BookOpen,
 } from 'lucide-react-native';
+import { ActionFeedbackToast, ToastType } from '../../shared/components/ActionFeedbackToast';
 
 interface HomeScreenProps {
   onOpenAddModal?: () => void;
@@ -40,6 +46,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
   const exams = useAppSelector((state) => state.schedule.exams);
 
   const [selectedTask, setSelectedTask] = useState<TaskWithSubtasks | null>(null);
+  const [toast, setToast] = useState<{
+    visible: boolean;
+    message: string;
+    subMessage?: string;
+    type: ToastType;
+  }>({
+    visible: false,
+    message: '',
+    subMessage: '',
+    type: 'success',
+  });
+
+  const showToast = (message: string, subMessage?: string, type: ToastType = 'success') => {
+    setToast({ visible: true, message, subMessage, type });
+  };
 
   // Active uncompleted tasks
   const activeTasks = tasks.filter((t) => !t.isCompleted);
@@ -72,6 +93,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
     dispatch(toggleTaskCompletion(task.id));
     if (willComplete) {
       dispatch(addExp(20));
+      showToast('Tugas Selesai! 🎉', '+20 EXP ditambahkan ke profilmu', 'exp');
+    } else {
+      showToast('Status Tugas Diperbarui', 'Tugas dikembalikan ke antrean aktif', 'info');
     }
   };
 
@@ -99,7 +123,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
           <View style={styles.streakPill}>
             <Flame color="#F59E0B" size={18} fill="#F59E0B" />
             <Text style={styles.streakPillText}>
-              Streak {user.streakDays || 4} hari
+              Streak {user.streakDays ?? 0} hari
             </Text>
           </View>
 
@@ -118,11 +142,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
             ========================================================= */}
         <View style={styles.greetingSection}>
           <Text style={styles.greetingTitle}>
-            Halo, {user.name || 'Develean'}
+            Halo, {user.name || 'Teman Belajar'}
           </Text>
           <View style={styles.levelProgressRow}>
             <Text style={styles.levelText}>
-              Level {user.currentLevel || 3} · {user.levelTitle || 'Scholar'}
+              Level {user.currentLevel || 1} · {user.levelTitle || 'Pelajar Baru'}
             </Text>
             <View style={styles.progressBarTrack}>
               <View
@@ -201,8 +225,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
             })}
           </View>
         ) : (
-          <View style={styles.emptyCardBox}>
-            <Text style={styles.emptyCardText}>Belum ada jadwal mata pelajaran hari ini</Text>
+          <View style={styles.actionableEmptyCard}>
+            <View style={styles.emptyIconCircle}>
+              <Calendar size={22} color="#2563EB" />
+            </View>
+            <Text style={styles.emptyTitle}>Hari ini belum ada jadwal pelajaran</Text>
+            <Text style={styles.emptySubtitle}>
+              Atur jadwal kelas mingguanmu agar maskot pintar bisa mengingatkan kelas tepat waktu.
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyCtaButton}
+              onPress={onOpenAddModal}
+              activeOpacity={0.85}
+            >
+              <Plus size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.emptyCtaText}>Tambah Jadwal Pelajaran</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -253,8 +291,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
             })}
           </View>
         ) : (
-          <View style={styles.emptyCardBox}>
-            <Text style={styles.emptyCardText}>Semua tugas tuntas! Belum ada tugas pending 🎉</Text>
+          <View style={styles.actionableEmptyCard}>
+            <View style={[styles.emptyIconCircle, { backgroundColor: '#ECFDF5' }]}>
+              <CheckCircle2 size={22} color="#059669" />
+            </View>
+            <Text style={styles.emptyTitle}>Belum ada tugas yang menumpuk 🎉</Text>
+            <Text style={styles.emptySubtitle}>
+              Semua tugasmu sudah tuntas! Catat PR atau target materi baru agar progres belajarmu terus berjalan.
+            </Text>
+            <TouchableOpacity
+              style={[styles.emptyCtaButton, { backgroundColor: '#059669' }]}
+              onPress={onOpenAddModal}
+              activeOpacity={0.85}
+            >
+              <Plus size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.emptyCtaText}>Buat Tugas Baru</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -279,6 +331,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
           setSelectedTask(null);
           if (onNavigateTab) onNavigateTab('Fokus');
         }}
+      />
+
+      {/* Floating Action Feedback Toast */}
+      <ActionFeedbackToast
+        visible={toast.visible}
+        message={toast.message}
+        subMessage={toast.subMessage}
+        type={toast.type}
+        onDismiss={() => setToast((prev) => ({ ...prev, visible: false }))}
+        topOffset={topPadding + 10}
       />
     </View>
   );
@@ -543,5 +605,63 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  actionableEmptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#EDF1F7',
+    marginTop: 6,
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  emptyIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F1B33',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 12,
+    marginBottom: 14,
+  },
+  emptyCtaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  emptyCtaText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

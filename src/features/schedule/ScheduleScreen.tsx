@@ -27,7 +27,9 @@ import {
   ChevronRight,
   X,
   RotateCcw,
+  Plus,
 } from 'lucide-react-native';
+import { ActionFeedbackToast, ToastType } from '../../shared/components/ActionFeedbackToast';
 
 const INDONESIAN_MONTHS = [
   'Januari',
@@ -378,11 +380,22 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
               );
             })
           ) : (
-            <View style={styles.emptyTimetableBox}>
-              <BookOpen size={28} color="#94A3B8" />
-              <Text style={styles.emptyTimetableText}>
-                Belum ada jadwal pelajaran di hari {selectedDay}
+            <View style={styles.actionableEmptyCard}>
+              <View style={styles.emptyIconCircle}>
+                <BookOpen size={24} color="#2563EB" />
+              </View>
+              <Text style={styles.emptyTitle}>Belum ada jadwal di hari {selectedDay}</Text>
+              <Text style={styles.emptySubtitle}>
+                Atur mata pelajaran untuk hari {selectedDay} agar jadwal kelasmu tertata rapi.
               </Text>
+              <TouchableOpacity
+                style={styles.emptyCtaButton}
+                onPress={() => onOpenAddSubjectModal && onOpenAddSubjectModal()}
+                activeOpacity={0.85}
+              >
+                <Plus size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.emptyCtaText}>Tambah Mapel Hari {selectedDay}</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -411,10 +424,22 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
           </View>
         </View>
 
-        <View style={styles.emptyNotesCard}>
-          <Text style={styles.emptyNotesText}>
-            Belum ada catatan materi untuk hari ini.
+        <View style={styles.actionableEmptyNotesCard}>
+          <View style={styles.emptyNotesIconCircle}>
+            <FileText size={20} color="#2563EB" />
+          </View>
+          <Text style={styles.emptyNotesTitle}>Belum ada catatan materi</Text>
+          <Text style={styles.emptyNotesSubtitle}>
+            Tulis rangkuman penting, rumus, atau tugas materi untuk hari {selectedDay}.
           </Text>
+          <TouchableOpacity
+            style={styles.emptyNotesCtaBtn}
+            onPress={handleOpenAddOptions}
+            activeOpacity={0.85}
+          >
+            <Plus size={14} color="#2563EB" style={{ marginRight: 4 }} />
+            <Text style={styles.emptyNotesCtaText}>Tulis Catatan Cepat</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -859,6 +884,114 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  actionableEmptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#EDF1F7',
+    marginVertical: 4,
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  emptyIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F1B33',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 10,
+    marginBottom: 14,
+  },
+  emptyCtaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  emptyCtaText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  actionableEmptyNotesCard: {
+    marginTop: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#EDF1F7',
+  },
+  emptyNotesIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  emptyNotesTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F1B33',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  emptyNotesSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 16,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+  },
+  emptyNotesCtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  emptyNotesCtaText: {
+    color: '#2563EB',
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   // Modal Styles

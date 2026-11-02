@@ -74,6 +74,19 @@ export const initDatabase = async () => {
       created_at TEXT NOT NULL,
       FOREIGN KEY (subject_id) REFERENCES subjects (id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS user_profile (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      name TEXT NOT NULL,
+      school TEXT NOT NULL DEFAULT '',
+      grade TEXT NOT NULL DEFAULT '',
+      current_level INTEGER NOT NULL DEFAULT 1,
+      level_title TEXT NOT NULL DEFAULT 'Pelajar Baru',
+      current_exp INTEGER NOT NULL DEFAULT 0,
+      max_exp INTEGER NOT NULL DEFAULT 100,
+      streak_days INTEGER NOT NULL DEFAULT 0,
+      has_completed_onboarding INTEGER NOT NULL DEFAULT 0
+    );
   `);
 
   console.log('[SQLite] Local database initialized successfully: myasisstent.db');

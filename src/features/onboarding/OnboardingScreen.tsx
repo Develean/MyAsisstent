@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch } from '../../store/store';
 import { completeOnboarding } from '../user/userSlice';
+import { LocalDataRepository } from '../../db/repository';
 
 const { width } = Dimensions.get('window');
 
@@ -44,10 +45,11 @@ export const OnboardingScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const [activeSlide, setActiveSlide] = useState(0);
   const [name, setName] = useState('');
-  const [selectedGrade, setSelectedGrade] = useState('Kelas 11 MIPA');
-  const [school, setSchool] = useState('SMAN 1 Jakarta');
+  const [grade, setGrade] = useState('');
+  const [school, setSchool] = useState('');
 
-  const grades = ['Kelas 10 SMA', 'Kelas 11 MIPA', 'Kelas 11 IPS', 'Kelas 12 SMA', 'SMK'];
+  const isNameValid = name.trim().length > 0;
+  const isButtonDisabled = activeSlide === 3 && !isNameValid;
 
   const handleNext = () => {
     if (activeSlide < slides.length) {
@@ -58,11 +60,30 @@ export const OnboardingScreen: React.FC = () => {
   };
 
   const handleFinish = () => {
+    if (!isNameValid) return;
+    const trimmedName = name.trim();
+    const trimmedGrade = grade.trim();
+    const trimmedSchool = school.trim();
+
+    // Persist to local SQLite
+    LocalDataRepository.saveUserProfile({
+      name: trimmedName,
+      grade: trimmedGrade,
+      school: trimmedSchool,
+      currentLevel: 1,
+      levelTitle: 'Pelajar Baru',
+      currentExp: 0,
+      maxExp: 100,
+      streakDays: 0,
+      hasCompletedOnboarding: true,
+    });
+
+    // Update Redux state
     dispatch(
       completeOnboarding({
-        name: name.trim() || 'Develean',
-        grade: selectedGrade,
-        school: school.trim() || 'SMA Indonesia',
+        name: trimmedName,
+        grade: trimmedGrade,
+        school: trimmedSchool,
       })
     );
   };
@@ -140,58 +161,49 @@ export const OnboardingScreen: React.FC = () => {
               </Text>
             </View>
 
-            {/* Input Nama Panggilan */}
+            {/* 1. Input Nama Panggilan (Wajib) */}
             <View className="bg-white rounded-card p-4 border border-surface-border shadow-sm mb-4">
-              <Text className="text-xs font-bold text-typography-muted mb-2">
-                NAMA PANGGILAN
-              </Text>
+              <View className="flex-row justify-between items-center mb-2">
+                <Text className="text-xs font-bold text-typography-muted">
+                  NAMA PANGGILAN
+                </Text>
+                <Text className="text-[10px] font-bold text-primary bg-primary-light px-2 py-0.5 rounded-full">
+                  Wajib
+                </Text>
+              </View>
               <TextInput
                 value={name}
                 onChangeText={setName}
-                placeholder="Misal: Develean"
+                placeholder="Misal: Develean atau Budi"
                 placeholderTextColor="#94A3B8"
                 className="text-base font-bold text-typography-main py-1"
                 autoFocus
               />
             </View>
 
-            {/* Pilih Kelas / Jenjang */}
+            {/* 2. Input Jenjang / Status (Input Bebas - General) */}
             <View className="bg-white rounded-card p-4 border border-surface-border shadow-sm mb-4">
-              <Text className="text-xs font-bold text-typography-muted mb-2.5">
-                PILIH JENJANG / KELAS
+              <Text className="text-xs font-bold text-typography-muted mb-2">
+                JENJANG / STATUS (OPSIONAL)
               </Text>
-              <View className="flex-row flex-wrap gap-2">
-                {grades.map((g) => (
-                  <TouchableOpacity
-                    key={g}
-                    onPress={() => setSelectedGrade(g)}
-                    className={`px-3 py-2 rounded-xl border ${
-                      selectedGrade === g
-                        ? 'bg-primary border-primary'
-                        : 'bg-surface-bg border-surface-border'
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-bold ${
-                        selectedGrade === g ? 'text-white' : 'text-typography-main'
-                      }`}
-                    >
-                      {g}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <TextInput
+                value={grade}
+                onChangeText={setGrade}
+                placeholder="Misal: Kelas 11 MIPA, Mahasiswa, atau Umum"
+                placeholderTextColor="#94A3B8"
+                className="text-sm font-semibold text-typography-main py-1"
+              />
             </View>
 
-            {/* Input Asal Sekolah (Opsional) */}
+            {/* 3. Input Asal Sekolah / Kampus / Instansi (Opsional) */}
             <View className="bg-white rounded-card p-4 border border-surface-border shadow-sm mb-2">
               <Text className="text-xs font-bold text-typography-muted mb-2">
-                ASAL SEKOLAH (OPSIONAL)
+                ASAL SEKOLAH / KAMPUS / INSTANSI (OPSIONAL)
               </Text>
               <TextInput
                 value={school}
                 onChangeText={setSchool}
-                placeholder="Misal: SMAN 1 Jakarta"
+                placeholder="Misal: SMAN 1 Jakarta atau Nama Kampus"
                 placeholderTextColor="#94A3B8"
                 className="text-sm font-semibold text-typography-main py-1"
               />
@@ -203,11 +215,18 @@ export const OnboardingScreen: React.FC = () => {
         <View className="mt-4">
           <TouchableOpacity
             onPress={handleNext}
-            className="bg-primary rounded-2xl py-4 items-center justify-center shadow-lg active:scale-95"
-            style={{ elevation: 4 }}
+            disabled={isButtonDisabled}
+            className={`rounded-2xl py-4 items-center justify-center shadow-lg active:scale-95 ${
+              isButtonDisabled ? 'bg-slate-300' : 'bg-primary'
+            }`}
+            style={{ elevation: isButtonDisabled ? 0 : 4 }}
           >
             <Text className="text-white font-bold text-base">
-              {activeSlide < 3 ? 'Lanjut ➔' : 'Mulai Belajar Sekarang 🚀'}
+              {activeSlide < 3
+                ? 'Lanjut ➔'
+                : isNameValid
+                ? 'Mulai Belajar Sekarang 🚀'
+                : 'Isi Nama Panggilan Dulu ✍️'}
             </Text>
           </TouchableOpacity>
         </View>

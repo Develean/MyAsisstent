@@ -10,6 +10,7 @@ import { LocalDataRepository } from './src/db/repository';
 import { LocalNotificationService } from './src/shared/notifications/notificationService';
 import { setTasks } from './src/features/tasks/taskSlice';
 import { setSubjects, setSchedules, setExams } from './src/features/schedule/scheduleSlice';
+import { setUserProfile } from './src/features/user/userSlice';
 import { OnboardingScreen } from './src/features/onboarding/OnboardingScreen';
 import { BottomTabNavigator } from './src/shared/navigation/BottomTabNavigator';
 import { QuickAddModal } from './src/shared/components/QuickAddModal';
@@ -24,6 +25,11 @@ const MainAppContent: React.FC = () => {
   // Load persistent SQLite data into Redux on mount
   useEffect(() => {
     try {
+      const savedProfile = LocalDataRepository.loadUserProfile();
+      if (savedProfile && savedProfile.hasCompletedOnboarding) {
+        dispatch(setUserProfile(savedProfile));
+      }
+
       const subjects = LocalDataRepository.loadSubjects();
       const schedules = LocalDataRepository.loadSchedules();
       const tasks = LocalDataRepository.loadTasks();
