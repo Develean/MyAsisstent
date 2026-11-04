@@ -20,6 +20,7 @@ import {
   resetTimer,
   tick,
   syncFromBackground,
+  claimSessionReward,
   setActiveTask,
   clearActiveTask,
 } from './focusSlice';
@@ -58,8 +59,6 @@ export const FocusScreen: React.FC = () => {
   const [sessionCompletedCelebration, setSessionCompletedCelebration] = useState(false);
 
   const focusNotificationIdRef = useRef<string | null>(null);
-  const hasTimerStartedRef = useRef<boolean>(false);
-  const rewardClaimedRef = useRef<boolean>(false);
 
   // Action Feedback Toast State
   const [toast, setToast] = useState<{
@@ -141,17 +140,10 @@ export const FocusScreen: React.FC = () => {
     ? tasks.find((t) => t.id === focus.activeTaskId) || null
     : null;
 
-  // Handle session completion reward
+  // Handle session completion reward via Redux persistent state
   useEffect(() => {
-    if (
-      focus.remainingSeconds === 0 &&
-      !focus.isRunning &&
-      hasTimerStartedRef.current &&
-      !rewardClaimedRef.current
-    ) {
-      rewardClaimedRef.current = true;
-      hasTimerStartedRef.current = false;
-
+    if (focus.sessionCompletedPendingReward) {
+      dispatch(claimSessionReward());
       dispatch(addExp(10));
       dispatch(recordDailyActivity());
 
@@ -171,7 +163,7 @@ export const FocusScreen: React.FC = () => {
       showToast('Sesi Fokus Tuntas!', '+10 EXP berhasil diklaim & streak diperbarui', 'exp');
       setTimeout(() => setSessionCompletedCelebration(false), 4500);
     }
-  }, [focus.remainingSeconds, focus.isRunning, dispatch]);
+  }, [focus.sessionCompletedPendingReward, dispatch, user.currentExp]);
 
   // Subtask Handlers with SQLite persistence
   const handleToggleSubtask = (subtaskId: number, currentCompleted: boolean) => {
@@ -217,10 +209,6 @@ export const FocusScreen: React.FC = () => {
 
   const handleTogglePlay = async () => {
     const nextRunning = !focus.isRunning;
-    if (nextRunning) {
-      hasTimerStartedRef.current = true;
-      rewardClaimedRef.current = false;
-    }
     dispatch(togglePlayPause());
     if (nextRunning) {
       showToast('Timer Dimulai', 'Fokus dan kurangi distraksi!', 'info');
@@ -239,8 +227,6 @@ export const FocusScreen: React.FC = () => {
   };
 
   const handleResetTimer = async () => {
-    hasTimerStartedRef.current = false;
-    rewardClaimedRef.current = false;
     dispatch(resetTimer());
     if (focusNotificationIdRef.current) {
       await LocalNotificationService.cancelNotification(focusNotificationIdRef.current);

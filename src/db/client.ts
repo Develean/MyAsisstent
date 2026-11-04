@@ -1,12 +1,9 @@
 import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
-import * as schema from './schema';
 
 export const DB_NAME = 'myasisten.db';
 export const LEGACY_DB_NAME = 'myasisstent.db';
 
 let sqliteDbInstance: SQLite.SQLiteDatabase | null = null;
-let drizzleDbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
 /**
  * Returns the unified singleton SQLite database instance.
@@ -16,17 +13,6 @@ export const getRawDb = (): SQLite.SQLiteDatabase => {
     sqliteDbInstance = SQLite.openDatabaseSync(DB_NAME);
   }
   return sqliteDbInstance;
-};
-
-/**
- * Returns the unified Drizzle ORM instance wrapping the same SQLite handle.
- */
-export const getDrizzleDb = () => {
-  if (!drizzleDbInstance) {
-    const raw = getRawDb();
-    drizzleDbInstance = drizzle(raw, { schema });
-  }
-  return drizzleDbInstance;
 };
 
 // Default export alias

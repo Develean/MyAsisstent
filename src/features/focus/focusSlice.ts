@@ -9,6 +9,7 @@ export interface FocusState {
   activeSubtaskId: number | null;
   completedSessions: number;
   targetEndTime: number | null;
+  sessionCompletedPendingReward: boolean;
 }
 
 const initialState: FocusState = {
@@ -20,6 +21,7 @@ const initialState: FocusState = {
   activeSubtaskId: null,
   completedSessions: 0,
   targetEndTime: null,
+  sessionCompletedPendingReward: false,
 };
 
 export const focusSlice = createSlice({
@@ -54,6 +56,7 @@ export const focusSlice = createSlice({
           state.isRunning = false;
           state.targetEndTime = null;
           state.completedSessions += 1;
+          state.sessionCompletedPendingReward = true;
         }
       } else {
         if (state.remainingSeconds > 0) {
@@ -61,6 +64,7 @@ export const focusSlice = createSlice({
         } else {
           state.isRunning = false;
           state.completedSessions += 1;
+          state.sessionCompletedPendingReward = true;
         }
       }
     },
@@ -71,6 +75,7 @@ export const focusSlice = createSlice({
         }
         state.isRunning = true;
         state.targetEndTime = Date.now() + state.remainingSeconds * 1000;
+        state.sessionCompletedPendingReward = false;
       } else {
         state.isRunning = false;
         state.targetEndTime = null;
@@ -84,17 +89,23 @@ export const focusSlice = createSlice({
           state.isRunning = false;
           state.targetEndTime = null;
           state.completedSessions += 1;
+          state.sessionCompletedPendingReward = true;
         }
       }
+    },
+    claimSessionReward: (state) => {
+      state.sessionCompletedPendingReward = false;
     },
     stopTimer: (state) => {
       state.isRunning = false;
       state.targetEndTime = null;
+      state.sessionCompletedPendingReward = false;
     },
     resetTimer: (state) => {
       state.isRunning = false;
       state.targetEndTime = null;
       state.remainingSeconds = state.durationMinutes * 60;
+      state.sessionCompletedPendingReward = false;
     },
     setActiveTask: (
       state,
@@ -117,6 +128,7 @@ export const {
   tick,
   togglePlayPause,
   syncFromBackground,
+  claimSessionReward,
   stopTimer,
   resetTimer,
   setActiveTask,

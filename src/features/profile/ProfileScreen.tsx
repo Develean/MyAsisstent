@@ -14,8 +14,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector, useAppDispatch } from '../../store/store';
 import { addExp } from '../user/userSlice';
 import { MascotPuppetView } from './mascot/MascotPuppetView';
-import { Cloud, Settings, Share2 } from 'lucide-react-native';
+import { Cloud, Settings, Share2, RotateCcw } from 'lucide-react-native';
 import { EditProfileModal } from './components/EditProfileModal';
+import { RestoreDataModal } from './components/RestoreDataModal';
 import { LocalDataRepository } from '../../db/repository';
 
 export const ProfileScreen: React.FC = () => {
@@ -26,6 +27,7 @@ export const ProfileScreen: React.FC = () => {
   const focus = useAppSelector((state) => state.focus);
 
   const [isEditProfileVisible, setIsEditProfileVisible] = useState(false);
+  const [isRestoreModalVisible, setIsRestoreModalVisible] = useState(false);
 
   const completedTasksCount = tasks.filter((t) => t.isCompleted).length;
   const focusSessionsCount = focus.completedSessions || 0;
@@ -59,7 +61,7 @@ export const ProfileScreen: React.FC = () => {
       const profile = LocalDataRepository.loadUserProfile();
 
       const backupData = {
-        app: 'MyAssistant',
+        app: 'MyAsisstent',
         exportedAt: new Date().toISOString(),
         profile,
         subjects,
@@ -71,7 +73,7 @@ export const ProfileScreen: React.FC = () => {
 
       const jsonString = JSON.stringify(backupData, null, 2);
       await Share.share({
-        title: `Backup_MyAssistant_${new Date().toISOString().split('T')[0]}.json`,
+        title: `Backup_MyAsisstent_${new Date().toISOString().split('T')[0]}.json`,
         message: jsonString,
       });
     } catch (err) {
@@ -281,14 +283,25 @@ export const ProfileScreen: React.FC = () => {
           <Text style={styles.syncDesc}>
             Ekspor seluruh jadwal, tugas, catatan, dan profil belajar Anda ke Google Drive, penyimpanan lokal, atau dibagikan ke perangkat lain secara aman.
           </Text>
-          <TouchableOpacity
-            style={styles.backupButton}
-            onPress={handleBackupNow}
-            activeOpacity={0.8}
-          >
-            <Share2 size={15} color="#0F1B33" style={{ marginRight: 6 }} />
-            <Text style={styles.backupButtonText}>Cadangkan & Ekspor Data</Text>
-          </TouchableOpacity>
+          <View style={styles.syncButtonsRow}>
+            <TouchableOpacity
+              style={styles.backupButton}
+              onPress={handleBackupNow}
+              activeOpacity={0.8}
+            >
+              <Share2 size={15} color="#0F1B33" style={{ marginRight: 6 }} />
+              <Text style={styles.backupButtonText}>Cadangkan Data</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.restoreButton}
+              onPress={() => setIsRestoreModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <RotateCcw size={15} color="#2563EB" style={{ marginRight: 6 }} />
+              <Text style={styles.restoreButtonText}>Pulihkan Data</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
 
@@ -296,6 +309,12 @@ export const ProfileScreen: React.FC = () => {
       <EditProfileModal
         visible={isEditProfileVisible}
         onClose={() => setIsEditProfileVisible(false)}
+      />
+
+      {/* Modal Pulihkan Data Cadangan */}
+      <RestoreDataModal
+        visible={isRestoreModalVisible}
+        onClose={() => setIsRestoreModalVisible(false)}
       />
     </View>
   );
@@ -541,10 +560,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
     lineHeight: 17,
   },
+  syncButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
   backupButton: {
-    marginTop: 10,
-    width: '100%',
-    height: 40,
+    flex: 1,
+    height: 42,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#DCE5F2',
@@ -557,5 +580,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#0F1B33',
+  },
+  restoreButton: {
+    flex: 1,
+    height: 42,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    backgroundColor: '#EFF6FF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  restoreButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563EB',
   },
 });
