@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   GestureResponderEvent,
   PanResponderGestureState,
 } from 'react-native';
+import { useAppSelector, RootState } from '../../../store/store';
 import Svg, {
   G,
   Path,
@@ -37,26 +38,62 @@ const MOOD_CONFIGS: Record<MascotMood, MascotStateConfig> = {
   sleep: { eyes: 'sleep', mouth: 'tiny', brows: 'down', fx: '' },
 };
 
-const QUOTES = [
-  'Halo! 3 hari lagi ada PTS Matematika Wajib lho. Yuk cicil 1 sesi fokus!',
-  'Semangat belajarnya hari ini! Jangan lupa minum air & istirahat ya.',
-  'Streak 4 hari kamu keren banget! Jaga terus konsistensinya ya!',
-  'Tinggal 350 EXP lagi nih buat naik ke Level 4! Mau cicil tugas bareng aku?',
-  'Wah geli tahu disentuh-sentuh! Hehehe... Makasih ya, aku makin semangat!',
-  'Kamu sudah tuntasin banyak tugas! Kalau penat, ambil jeda 5 menit dulu yuk.',
-  'Psst... kalau rajin fokus sampai Level 5, aku bakal pakai kostum wisuda lho!',
-];
-
 interface MascotPuppetViewProps {
   onExpReward?: (exp: number) => void;
 }
 
 export const MascotPuppetView: React.FC<MascotPuppetViewProps> = ({ onExpReward }) => {
+  const user = useAppSelector((state: RootState) => state.user);
+  const exams = useAppSelector((state: RootState) => state.schedule.exams);
+  const tasks = useAppSelector((state: RootState) => state.tasks.tasks);
+
+  const nearestExam = exams.length > 0 ? exams[0] : null;
+  const pendingTasksCount = tasks.filter((t) => !t.isCompleted).length;
+  const expToNextLevel = Math.max(0, user.maxExp - user.currentExp);
+
+  const dynamicQuotes = useMemo(() => {
+    const list: string[] = [];
+
+    // Contextual exam quote
+    if (nearestExam) {
+      list.push(`Halo ${user.name || 'teman'}! ${nearestExam.daysLeft} hari lagi ada ujian "${nearestExam.title}" lho. Yuk cicil 1 sesi fokus!`);
+    } else {
+      list.push(`Halo ${user.name || 'teman'}! Semua jadwal ujianmu aman. Yuk pertahankan fokus belajar hari ini!`);
+    }
+
+    // Contextual streak quote
+    if (user.streakDays && user.streakDays > 0) {
+      list.push(`Streak ${user.streakDays} hari kamu keren banget! Jaga terus konsistensinya ya!`);
+    } else {
+      list.push('Yuk mulai streak belajarmu hari ini dengan menyelesaikan 1 sesi fokus!');
+    }
+
+    // Contextual EXP & Level quote
+    list.push(`Tinggal ${expToNextLevel} EXP lagi nih buat naik ke Level ${user.currentLevel + 1}! Mau cicil tugas bareng aku?`);
+
+    // Contextual task quote
+    if (pendingTasksCount > 0) {
+      list.push(`Ada ${pendingTasksCount} tugas yang masih menunggumu. Mau kita selesaikan satu per satu?`);
+    } else {
+      list.push('Hebat! Semua tugas aktif sudah tuntas. Saatnya istirahat atau pelajari materi baru.');
+    }
+
+    list.push('Wah geli tahu disentuh-sentuh! Hehehe... Makasih ya, aku makin semangat!');
+    list.push('Semangat belajarnya hari ini! Jangan lupa minum air & istirahat ya.');
+
+    return list;
+  }, [user.name, user.streakDays, user.currentLevel, user.maxExp, expToNextLevel, nearestExam, pendingTasksCount]);
+
   const [currentMood, setCurrentMood] = useState<MascotMood>('normal');
-  const [speechText, setSpeechText] = useState(QUOTES[0]);
+  const [speechText, setSpeechText] = useState(dynamicQuotes[0]);
   const [isBlinking, setIsBlinking] = useState(false);
   const [talkingMouth, setTalkingMouth] = useState<'smile' | 'open' | 'o' | null>(null);
   const [tapCount, setTapCount] = useState(0);
+
+  // Sync initial quote when dynamicQuotes change
+  useEffect(() => {
+    setSpeechText(dynamicQuotes[tapCount % dynamicQuotes.length]);
+  }, [dynamicQuotes]);
 
   // Animation values
   const scaleX = useRef(new Animated.Value(1)).current;
@@ -183,7 +220,7 @@ export const MascotPuppetView: React.FC<MascotPuppetViewProps> = ({ onExpReward 
     // Rotate speech quote
     const nextCount = tapCount + 1;
     setTapCount(nextCount);
-    const nextQuote = QUOTES[nextCount % QUOTES.length];
+    const nextQuote = dynamicQuotes[nextCount % dynamicQuotes.length];
 
     Animated.sequence([
       Animated.timing(speechBubbleOpacity, { toValue: 0.3, duration: 80, useNativeDriver: true }),

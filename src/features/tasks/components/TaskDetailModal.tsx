@@ -17,10 +17,12 @@ import {
   toggleSubtaskCompletion,
   toggleTaskCompletion,
   addSubtask,
+  setTaskSubtasks,
   deleteSubtask,
   autoBreakdownTask,
   deleteTask,
 } from '../taskSlice';
+import { autoGenerateSubtasks } from '../subtaskEngine';
 import { setActiveTask } from '../../focus/focusSlice';
 import { addExp, recordDailyActivity } from '../../user/userSlice';
 import { LocalDataRepository } from '../../../db/repository';
@@ -111,25 +113,35 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const handleAddSubtask = () => {
     if (!newSubtaskTitle.trim()) return;
     const title = newSubtaskTitle.trim();
+    const subtaskId = generateId();
     const newSubtask = {
-      id: generateId(),
+      id: subtaskId,
       taskId: task.id,
       title,
       isCompleted: false,
       orderIdx: task.subtasks.length,
     };
-    dispatch(addSubtask({ taskId: task.id, title }));
+    dispatch(addSubtask({ taskId: task.id, title, id: subtaskId }));
     LocalDataRepository.saveSubtask(newSubtask);
     showToast('Langkah Ditambahkan', title, 'info');
     setNewSubtaskTitle('');
   };
 
   const handleAutoBreakdown = () => {
-    dispatch(autoBreakdownTask({ taskId: task.id }));
-    setTimeout(() => {
-      // Load current task from DB or state to persist breakdown
-      LocalDataRepository.saveTask(task);
-    }, 100);
+    const generated = autoGenerateSubtasks(task.title);
+    const newSubtasks = generated.map((g) => ({
+      id: generateId(),
+      taskId: task.id,
+      title: g.title,
+      isCompleted: false,
+      orderIdx: g.orderIdx,
+    }));
+    dispatch(setTaskSubtasks({ taskId: task.id, subtasks: newSubtasks }));
+    LocalDataRepository.saveTask({
+      ...task,
+      subtasks: newSubtasks,
+      isCompleted: false,
+    });
     showToast('Langkah Mini Dibuat', 'Tugas dipecah otomatis jadi 3 langkah', 'success');
   };
 

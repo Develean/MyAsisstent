@@ -94,22 +94,38 @@ export class LocalNotificationService {
     daysLeft: number
   ): Promise<string | null> {
     try {
-      // Notification morning of H-3 or H-1
-      const triggerDate = new Date();
-      triggerDate.setDate(triggerDate.getDate() + Math.max(1, daysLeft - 1));
-      triggerDate.setHours(7, 0, 0, 0);
+      // Parse exam date (YYYY-MM-DD)
+      const [year, month, day] = examDateStr.split('-').map(Number);
+      // Target reminder: H-1 morning at 07:00 AM
+      const triggerDate = new Date(year, month - 1, day - 1, 7, 0, 0);
+      const examMorning = new Date(year, month - 1, day, 6, 30, 0);
+      const now = Date.now();
 
-      if (triggerDate.getTime() > Date.now()) {
+      let scheduledTrigger: Date | null = null;
+      if (triggerDate.getTime() > now) {
+        scheduledTrigger = triggerDate;
+      } else if (examMorning.getTime() > now) {
+        // If H-1 07:00 has already passed, schedule reminder for tonight at 19:00 or shortly ahead
+        const tonight = new Date();
+        tonight.setHours(19, 0, 0, 0);
+        if (tonight.getTime() > now && tonight.getTime() < examMorning.getTime()) {
+          scheduledTrigger = tonight;
+        } else {
+          scheduledTrigger = new Date(now + 15 * 60 * 1000); // 15 minutes from now
+        }
+      }
+
+      if (scheduledTrigger) {
         const notifId = await Notifications.scheduleNotificationAsync({
           content: {
             title: `Maskot: Ujian ${examTitle} Tinggal Sedikit Lagi!`,
-            body: `Ujian "${examTitle}" tinggal ${daysLeft} hari lagi. Buka aplikasi untuk review catatan!`,
+            body: `Ujian "${examTitle}" tinggal ${Math.max(1, daysLeft)} hari lagi. Buka aplikasi untuk review catatan!`,
             data: { examId, type: 'exam_countdown' },
             sound: true,
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: triggerDate,
+            date: scheduledTrigger,
           },
         });
         return notifId;

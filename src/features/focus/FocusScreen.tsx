@@ -58,6 +58,8 @@ export const FocusScreen: React.FC = () => {
   const [sessionCompletedCelebration, setSessionCompletedCelebration] = useState(false);
 
   const focusNotificationIdRef = useRef<string | null>(null);
+  const hasTimerStartedRef = useRef<boolean>(false);
+  const rewardClaimedRef = useRef<boolean>(false);
 
   // Action Feedback Toast State
   const [toast, setToast] = useState<{
@@ -141,7 +143,15 @@ export const FocusScreen: React.FC = () => {
 
   // Handle session completion reward
   useEffect(() => {
-    if (focus.remainingSeconds === 0 && !focus.isRunning) {
+    if (
+      focus.remainingSeconds === 0 &&
+      !focus.isRunning &&
+      hasTimerStartedRef.current &&
+      !rewardClaimedRef.current
+    ) {
+      rewardClaimedRef.current = true;
+      hasTimerStartedRef.current = false;
+
       dispatch(addExp(10));
       dispatch(recordDailyActivity());
 
@@ -183,14 +193,15 @@ export const FocusScreen: React.FC = () => {
     if (!newSubtaskTitle.trim()) return;
     if (activeTask) {
       const title = newSubtaskTitle.trim();
+      const subtaskId = generateId();
       const newSubtask = {
-        id: generateId(),
+        id: subtaskId,
         taskId: activeTask.id,
         title,
         isCompleted: false,
         orderIdx: activeTask.subtasks.length,
       };
-      dispatch(addSubtask({ taskId: activeTask.id, title }));
+      dispatch(addSubtask({ taskId: activeTask.id, title, id: subtaskId }));
       LocalDataRepository.saveSubtask(newSubtask);
       showToast('Langkah Ditambahkan', title, 'info');
       setNewSubtaskTitle('');
@@ -206,6 +217,10 @@ export const FocusScreen: React.FC = () => {
 
   const handleTogglePlay = async () => {
     const nextRunning = !focus.isRunning;
+    if (nextRunning) {
+      hasTimerStartedRef.current = true;
+      rewardClaimedRef.current = false;
+    }
     dispatch(togglePlayPause());
     if (nextRunning) {
       showToast('Timer Dimulai', 'Fokus dan kurangi distraksi!', 'info');
@@ -224,6 +239,8 @@ export const FocusScreen: React.FC = () => {
   };
 
   const handleResetTimer = async () => {
+    hasTimerStartedRef.current = false;
+    rewardClaimedRef.current = false;
     dispatch(resetTimer());
     if (focusNotificationIdRef.current) {
       await LocalNotificationService.cancelNotification(focusNotificationIdRef.current);

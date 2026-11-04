@@ -20,6 +20,7 @@ import {
 import { addExp, recordDailyActivity } from '../user/userSlice';
 import { setActiveTask } from '../focus/focusSlice';
 import { TaskDetailModal } from '../tasks/components/TaskDetailModal';
+import { LocalDataRepository } from '../../db/repository';
 import {
   Flame,
   User as UserIcon,
@@ -95,6 +96,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
   const handleToggleTask = (task: TaskWithSubtasks) => {
     const willComplete = !task.isCompleted;
     dispatch(toggleTaskCompletion(task.id));
+    LocalDataRepository.updateTaskCompletion(task.id, willComplete);
     if (willComplete) {
       dispatch(addExp(20));
       dispatch(recordDailyActivity());

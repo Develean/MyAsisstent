@@ -90,6 +90,12 @@ export const SubjectDetailModal: React.FC<SubjectDetailModalProps> = ({
     onClose();
   };
 
+  const handleToggleTask = (task: typeof tasks[0]) => {
+    const nextCompleted = !task.isCompleted;
+    dispatch(toggleTaskCompletion(task.id));
+    LocalDataRepository.updateTaskCompletion(task.id, nextCompleted);
+  };
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
@@ -174,7 +180,7 @@ export const SubjectDetailModal: React.FC<SubjectDetailModalProps> = ({
                     subjectTasks.map((task) => (
                       <View key={task.id} style={styles.taskItem}>
                         <TouchableOpacity
-                          onPress={() => dispatch(toggleTaskCompletion(task.id))}
+                          onPress={() => handleToggleTask(task)}
                           style={styles.taskCheck}
                         >
                           {task.isCompleted ? (

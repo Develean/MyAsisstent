@@ -8,13 +8,15 @@ import {
   Platform,
   StatusBar,
   Alert,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector, useAppDispatch } from '../../store/store';
 import { addExp } from '../user/userSlice';
 import { MascotPuppetView } from './mascot/MascotPuppetView';
-import { Cloud, Settings } from 'lucide-react-native';
+import { Cloud, Settings, Share2 } from 'lucide-react-native';
 import { EditProfileModal } from './components/EditProfileModal';
+import { LocalDataRepository } from '../../db/repository';
 
 export const ProfileScreen: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -47,11 +49,34 @@ export const ProfileScreen: React.FC = () => {
     24
   ) + 10;
 
-  const handleBackupNow = () => {
-    Alert.alert(
-      'Pencadangan Berhasil',
-      'Seluruh jadwal pelajaran, tugas, dan statistik belajar Anda telah disinkronkan ke Google Drive pribadi Anda.'
-    );
+  const handleBackupNow = async () => {
+    try {
+      const subjects = LocalDataRepository.loadSubjects();
+      const schedules = LocalDataRepository.loadSchedules();
+      const tasksList = LocalDataRepository.loadTasks();
+      const exams = LocalDataRepository.loadExams();
+      const notes = LocalDataRepository.loadNotes();
+      const profile = LocalDataRepository.loadUserProfile();
+
+      const backupData = {
+        app: 'MyAssistant',
+        exportedAt: new Date().toISOString(),
+        profile,
+        subjects,
+        schedules,
+        tasks: tasksList,
+        exams,
+        notes,
+      };
+
+      const jsonString = JSON.stringify(backupData, null, 2);
+      await Share.share({
+        title: `Backup_MyAssistant_${new Date().toISOString().split('T')[0]}.json`,
+        message: jsonString,
+      });
+    } catch (err) {
+      Alert.alert('Gagal Mencadangkan', 'Terjadi kendala saat mengekspor data cadangan.');
+    }
   };
 
   return (
@@ -240,29 +265,29 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* 4. Section Google Drive Siswa (BYOS) (Exact Match Design Image 1) */}
+        {/* 4. Section Pencadangan & Ekspor Data */}
         <View style={styles.syncCard}>
           <View style={styles.syncHeaderRow}>
             <View style={styles.syncTitleLeft}>
               <View style={styles.cloudIconCircle}>
                 <Cloud size={18} color="#2563EB" />
               </View>
-              <Text style={styles.syncTitle}>Google Drive Siswa</Text>
+              <Text style={styles.syncTitle}>Cadangan & Ekspor Data</Text>
             </View>
             <View style={styles.connectedPill}>
-              <Text style={styles.connectedText}>Terhubung</Text>
+              <Text style={styles.connectedText}>Tersedia</Text>
             </View>
           </View>
           <Text style={styles.syncDesc}>
-            Data tersimpan aman di Google Drive akun pribadi Anda tanpa server perantara. Kuota terpakai: 48 KB dari 100 GB.
+            Ekspor seluruh jadwal, tugas, catatan, dan profil belajar Anda ke Google Drive, penyimpanan lokal, atau dibagikan ke perangkat lain secara aman.
           </Text>
           <TouchableOpacity
             style={styles.backupButton}
             onPress={handleBackupNow}
             activeOpacity={0.8}
           >
-            <Cloud size={15} color="#0F1B33" style={{ marginRight: 6 }} />
-            <Text style={styles.backupButtonText}>Cadangkan Sekarang</Text>
+            <Share2 size={15} color="#0F1B33" style={{ marginRight: 6 }} />
+            <Text style={styles.backupButtonText}>Cadangkan & Ekspor Data</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

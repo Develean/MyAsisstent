@@ -189,8 +189,11 @@ export class LocalDataRepository {
 
       // Clean up orphaned subtasks removed from the task
       if (task.subtasks && task.subtasks.length > 0) {
-        const subtaskIds = task.subtasks.map((s) => s.id).join(',');
-        db.runSync(`DELETE FROM subtasks WHERE task_id = ? AND id NOT IN (${subtaskIds});`, [task.id]);
+        const placeholders = task.subtasks.map(() => '?').join(',');
+        db.runSync(
+          `DELETE FROM subtasks WHERE task_id = ? AND id NOT IN (${placeholders});`,
+          [task.id, ...task.subtasks.map((s) => s.id)]
+        );
 
         // Upsert existing subtasks
         for (const sub of task.subtasks) {
@@ -246,6 +249,21 @@ export class LocalDataRepository {
       );
     } catch (err) {
       console.warn('Failed to save subtask to SQLite:', err);
+    }
+  }
+
+  /**
+   * Update task completion status directly
+   */
+  static updateTaskCompletion(taskId: number, isCompleted: boolean): void {
+    try {
+      const db = getDb();
+      db.runSync('UPDATE tasks SET is_completed = ? WHERE id = ?;', [
+        isCompleted ? 1 : 0,
+        taskId,
+      ]);
+    } catch (err) {
+      console.warn('Failed to update task completion in SQLite:', err);
     }
   }
 
@@ -386,7 +404,7 @@ export class LocalDataRepository {
       db.runSync(
         `INSERT OR REPLACE INTO notes (id, subject_id, date, content, created_at)
          VALUES (?, ?, ?, ?, ?);`,
-        [note.id, note.subjectId, note.date, note.content, note.createdAt]
+        [note.id, note.subjectId ?? null, note.date, note.content, note.createdAt]
       );
     } catch (err) {
       console.warn('Failed to save note to SQLite:', err);

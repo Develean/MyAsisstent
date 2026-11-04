@@ -90,11 +90,11 @@ export const initDatabase = async () => {
 
     CREATE TABLE IF NOT EXISTS notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      subject_id INTEGER NOT NULL,
+      subject_id INTEGER,
       date TEXT NOT NULL,
       content TEXT NOT NULL,
       created_at TEXT NOT NULL,
-      FOREIGN KEY (subject_id) REFERENCES subjects (id) ON DELETE CASCADE
+      FOREIGN KEY (subject_id) REFERENCES subjects (id) ON DELETE SET NULL
     );
 
     CREATE TABLE IF NOT EXISTS user_profile (

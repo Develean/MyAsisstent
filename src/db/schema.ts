@@ -44,7 +44,7 @@ export const exams = sqliteTable('exams', {
 
 export const notes = sqliteTable('notes', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  subjectId: integer('subject_id').notNull().references(() => subjects.id),
+  subjectId: integer('subject_id').references(() => subjects.id),
   date: text('date').notNull(), // '2026-10-28'
   content: text('content').notNull(),
   createdAt: text('created_at').notNull(),

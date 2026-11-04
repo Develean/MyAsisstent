@@ -62,12 +62,12 @@ export const taskSlice = createSlice({
     },
     addSubtask: (
       state,
-      action: PayloadAction<{ taskId: number; title: string }>
+      action: PayloadAction<{ taskId: number; title: string; id?: number }>
     ) => {
       const task = state.tasks.find((t) => t.id === action.payload.taskId);
       if (task && action.payload.title.trim()) {
         const newSubtask: Subtask = {
-          id: generateId(),
+          id: action.payload.id || generateId(),
           taskId: task.id,
           title: action.payload.title.trim(),
           isCompleted: false,
@@ -75,6 +75,16 @@ export const taskSlice = createSlice({
         };
         task.subtasks.push(newSubtask);
         task.isCompleted = false;
+      }
+    },
+    setTaskSubtasks: (
+      state,
+      action: PayloadAction<{ taskId: number; subtasks: Subtask[] }>
+    ) => {
+      const task = state.tasks.find((t) => t.id === action.payload.taskId);
+      if (task) {
+        task.subtasks = action.payload.subtasks;
+        task.isCompleted = task.subtasks.length > 0 && task.subtasks.every((s) => s.isCompleted);
       }
     },
     deleteSubtask: (
@@ -122,6 +132,7 @@ export const {
   toggleTaskCompletion,
   toggleSubtaskCompletion,
   addSubtask,
+  setTaskSubtasks,
   deleteSubtask,
   autoBreakdownTask,
   deleteTask,

@@ -64,8 +64,8 @@ export const NotesModal: React.FC<NotesModalProps> = ({
 
   const handleSaveNote = () => {
     if (!content.trim()) return;
-    const noteSubjectId = selectedSubjectId || (subjects.length > 0 ? subjects[0].id : 1);
-    const chosenSubject = subjects.find((s) => s.id === noteSubjectId);
+    const noteSubjectId = selectedSubjectId || (subjects.length > 0 ? subjects[0].id : null);
+    const chosenSubject = noteSubjectId ? subjects.find((s) => s.id === noteSubjectId) : undefined;
 
     const nowISO = new Date().toISOString();
     const newNote: NoteWithSubject = {
