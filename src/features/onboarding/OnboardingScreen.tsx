@@ -6,7 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
+  StyleSheet,
   Platform,
   StatusBar,
 } from 'react-native';
@@ -15,8 +15,6 @@ import { useAppDispatch } from '../../store/store';
 import { completeOnboarding } from '../user/userSlice';
 import { LocalDataRepository } from '../../db/repository';
 import { Calendar, Clock, Sparkles, ArrowRight } from 'lucide-react-native';
-
-const { width } = Dimensions.get('window');
 
 const slides = [
   {
@@ -68,6 +66,7 @@ export const OnboardingScreen: React.FC = () => {
     const trimmedName = name.trim();
     const trimmedGrade = grade.trim();
     const trimmedSchool = school.trim();
+    const today = new Date().toISOString().split('T')[0];
 
     // Persist to local SQLite
     LocalDataRepository.saveUserProfile({
@@ -78,7 +77,8 @@ export const OnboardingScreen: React.FC = () => {
       levelTitle: 'Pelajar Baru',
       currentExp: 0,
       maxExp: 100,
-      streakDays: 0,
+      streakDays: 1,
+      lastActiveDate: today,
       hasCompletedOnboarding: true,
     });
 
@@ -100,95 +100,96 @@ export const OnboardingScreen: React.FC = () => {
   ) + 8;
 
   return (
-    <View className="flex-1 bg-surface-bg" style={{ paddingTop: topPadding }}>
-      <View className="flex-1 px-6 justify-between py-6">
+    <View style={[styles.root, { paddingTop: topPadding }]}>
+      <View style={styles.container}>
         {/* Top Header / Progress Dots */}
-        <View className="flex-row justify-between items-center mt-2">
-          <View className="flex-row space-x-2">
+        <View style={styles.headerRow}>
+          <View style={styles.dotsRow}>
             {[0, 1, 2, 3].map((idx) => (
               <View
                 key={idx}
-                className={`h-2 rounded-full ${
-                  activeSlide === idx ? 'w-8 bg-primary' : 'w-2 bg-surface-border'
-                }`}
+                style={[
+                  styles.dot,
+                  activeSlide === idx ? styles.dotActive : styles.dotInactive,
+                ]}
               />
             ))}
           </View>
           {activeSlide < 3 && (
-            <TouchableOpacity onPress={() => setActiveSlide(3)}>
-              <Text className="text-typography-muted font-bold text-sm">Lewati</Text>
+            <TouchableOpacity onPress={() => setActiveSlide(3)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.skipText}>Lewati</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Carousel Content (Slides 0, 1, 2) */}
         {activeSlide < 3 ? (
-          <View className="items-center my-auto">
+          <View style={styles.carouselContainer}>
             {/* Mascot Art */}
-            <View className="w-52 h-52 items-center justify-center mb-6">
+            <View style={styles.mascotBox}>
               <Image
                 source={slides[activeSlide].image}
-                className="w-48 h-48"
+                style={styles.mascotImage}
                 resizeMode="contain"
               />
             </View>
 
             {/* Feature Badge */}
-            <View className="flex-row items-center bg-primary-light border border-primary-border px-3 py-1.5 rounded-full mb-3 gap-1.5">
+            <View style={styles.featureBadge}>
               {slides[activeSlide].icon}
-              <Text className="text-primary font-bold text-xs">
+              <Text style={styles.badgeText}>
                 {slides[activeSlide].badge}
               </Text>
             </View>
 
             {/* Title & Description */}
-            <Text className="text-2xl font-extrabold text-typography-main text-center mb-3">
+            <Text style={styles.slideTitle}>
               {slides[activeSlide].title}
             </Text>
-            <Text className="text-typography-muted text-center text-sm leading-6 px-4">
+            <Text style={styles.slideDesc}>
               {slides[activeSlide].desc}
             </Text>
           </View>
         ) : (
-          /* Slide 3: Input Nama & Jenjang Siswa */
-          <ScrollView showsVerticalScrollIndicator={false} className="my-auto">
-            <View className="items-center mb-4">
+          /* Slide 3: Input Nama & Jenjang Siswa (General Input Form - Zero Emojis) */
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.formContainer}>
+            <View style={styles.formHero}>
               <Image
                 source={require('../../../assets/merayakan.png')}
-                className="w-36 h-36 mb-2"
+                style={styles.formMascotImage}
                 resizeMode="contain"
               />
-              <Text className="text-2xl font-extrabold text-typography-main text-center">
+              <Text style={styles.formTitle}>
                 Kenalan Dulu Yuk!
               </Text>
-              <Text className="text-typography-muted text-center text-xs mt-1 px-6">
+              <Text style={styles.formSubtitle}>
                 Siapa nama panggilanmu? Maskot kami ingin menyapamu setiap hari.
               </Text>
             </View>
 
             {/* 1. Input Nama Panggilan (Wajib) */}
-            <View className="bg-white rounded-card p-4 border border-surface-border shadow-sm mb-4">
-              <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-xs font-bold text-typography-muted">
+            <View style={styles.inputCard}>
+              <View style={styles.inputHeaderRow}>
+                <Text style={styles.inputLabel}>
                   NAMA PANGGILAN
                 </Text>
-                <Text className="text-[10px] font-bold text-primary bg-primary-light px-2 py-0.5 rounded-full">
-                  Wajib
-                </Text>
+                <View style={styles.requiredBadge}>
+                  <Text style={styles.requiredBadgeText}>Wajib</Text>
+                </View>
               </View>
               <TextInput
                 value={name}
                 onChangeText={setName}
                 placeholder="Misal: Develean atau Budi"
                 placeholderTextColor="#94A3B8"
-                className="text-base font-bold text-typography-main py-1"
+                style={styles.textInputBold}
                 autoFocus
               />
             </View>
 
-            {/* 2. Input Jenjang / Status (Input Bebas - General) */}
-            <View className="bg-white rounded-card p-4 border border-surface-border shadow-sm mb-4">
-              <Text className="text-xs font-bold text-typography-muted mb-2">
+            {/* 2. Input Jenjang / Status (General Form Input) */}
+            <View style={styles.inputCard}>
+              <Text style={styles.inputLabel}>
                 JENJANG / STATUS (OPSIONAL)
               </Text>
               <TextInput
@@ -196,37 +197,38 @@ export const OnboardingScreen: React.FC = () => {
                 onChangeText={setGrade}
                 placeholder="Misal: Kelas 11 MIPA, Mahasiswa, atau Umum"
                 placeholderTextColor="#94A3B8"
-                className="text-sm font-semibold text-typography-main py-1"
+                style={styles.textInputRegular}
               />
             </View>
 
             {/* 3. Input Asal Sekolah / Kampus / Instansi (Opsional) */}
-            <View className="bg-white rounded-card p-4 border border-surface-border shadow-sm mb-2">
-              <Text className="text-xs font-bold text-typography-muted mb-2">
+            <View style={styles.inputCard}>
+              <Text style={styles.inputLabel}>
                 ASAL SEKOLAH / KAMPUS / INSTANSI (OPSIONAL)
               </Text>
               <TextInput
                 value={school}
                 onChangeText={setSchool}
-                placeholder="Misal: SMAN 1 Jakarta atau Nama Kampus"
+                placeholder="Misal: SMAN 1 Jakarta atau Universitas Indonesia"
                 placeholderTextColor="#94A3B8"
-                className="text-sm font-semibold text-typography-main py-1"
+                style={styles.textInputRegular}
               />
             </View>
           </ScrollView>
         )}
 
         {/* Bottom CTA Button */}
-        <View className="mt-4">
+        <View style={styles.bottomBar}>
           <TouchableOpacity
             onPress={handleNext}
             disabled={isButtonDisabled}
-            className={`rounded-2xl py-4 flex-row items-center justify-center shadow-lg active:scale-95 gap-2 ${
-              isButtonDisabled ? 'bg-slate-300' : 'bg-primary'
-            }`}
-            style={{ elevation: isButtonDisabled ? 0 : 4 }}
+            style={[
+              styles.ctaButton,
+              isButtonDisabled ? styles.ctaButtonDisabled : styles.ctaButtonActive,
+            ]}
+            activeOpacity={0.85}
           >
-            <Text className="text-white font-bold text-base">
+            <Text style={styles.ctaButtonText}>
               {activeSlide < 3
                 ? 'Lanjut'
                 : isNameValid
@@ -241,5 +243,195 @@ export const OnboardingScreen: React.FC = () => {
     </View>
   );
 };
-export default OnboardingScreen;
 
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#F3F6FA',
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'space-between',
+    paddingBottom: 24,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dot: {
+    height: 8,
+    borderRadius: 4,
+  },
+  dotActive: {
+    width: 32,
+    backgroundColor: '#2563EB',
+  },
+  dotInactive: {
+    width: 8,
+    backgroundColor: '#E2E8F0',
+  },
+  skipText: {
+    color: '#64748B',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  carouselContainer: {
+    alignItems: 'center',
+    marginVertical: 'auto',
+  },
+  mascotBox: {
+    width: 208,
+    height: 208,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  mascotImage: {
+    width: 192,
+    height: 192,
+  },
+  featureBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 12,
+    gap: 6,
+  },
+  badgeText: {
+    color: '#2563EB',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  slideTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F1B33',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  slideDesc: {
+    color: '#64748B',
+    textAlign: 'center',
+    fontSize: 14,
+    lineHeight: 22,
+    paddingHorizontal: 16,
+  },
+  formContainer: {
+    paddingVertical: 12,
+  },
+  formHero: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  formMascotImage: {
+    width: 130,
+    height: 130,
+    marginBottom: 8,
+  },
+  formTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F1B33',
+    textAlign: 'center',
+  },
+  formSubtitle: {
+    color: '#64748B',
+    textAlign: 'center',
+    fontSize: 13,
+    marginTop: 4,
+    paddingHorizontal: 24,
+    lineHeight: 18,
+  },
+  inputCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  inputHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+  requiredBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  requiredBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  textInputBold: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F1B33',
+    paddingVertical: 4,
+  },
+  textInputRegular: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F1B33',
+    paddingVertical: 4,
+  },
+  bottomBar: {
+    marginTop: 12,
+  },
+  ctaButton: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  ctaButtonActive: {
+    backgroundColor: '#2563EB',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  ctaButtonDisabled: {
+    backgroundColor: '#CBD5E1',
+    elevation: 0,
+  },
+  ctaButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+});
+
+export default OnboardingScreen;

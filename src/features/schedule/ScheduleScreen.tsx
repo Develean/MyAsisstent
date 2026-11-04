@@ -15,6 +15,7 @@ import { useAppSelector, useAppDispatch } from '../../store/store';
 import { setSelectedDay, setSelectedDate, ScheduleWithSubject } from './scheduleSlice';
 import { SubjectDetailModal } from './components/SubjectDetailModal';
 import { AddExamModal } from './components/AddExamModal';
+import { NotesModal } from '../notes/components/NotesModal';
 import {
   Calendar,
   AlertCircle,
@@ -99,6 +100,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
   const selectedDay = useAppSelector((state) => state.schedule.selectedDay);
   const schedules = useAppSelector((state) => state.schedule.schedules);
   const exams = useAppSelector((state) => state.schedule.exams);
+  const notes = useAppSelector((state) => state.notes.notes);
 
   // Month & Year State (Defaults to Oktober 2026 as master mockup)
   const [selectedYear, setSelectedYear] = useState<number>(2026);
@@ -109,6 +111,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
 
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleWithSubject | null>(null);
   const [isExamModalVisible, setIsExamModalVisible] = useState(false);
+  const [isNotesModalVisible, setIsNotesModalVisible] = useState(false);
 
   const stripScrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
 
@@ -166,6 +169,9 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
   // Real DB schedules for the selected day
   const dbSchedulesForDay = schedules.filter((s) => s.dayOfWeek === selectedDay);
 
+  // Notes for the selected day
+  const notesForDay = notes.filter((n) => n.date === currentActiveDayItem.fullDateStr);
+
   // Nearest exam
   const nearestExam = exams.length > 0 ? exams[0] : null;
 
@@ -186,6 +192,10 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
         {
           text: 'Jadwal Ujian / PTS / PAS',
           onPress: () => setIsExamModalVisible(true),
+        },
+        {
+          text: 'Catatan Pelajaran',
+          onPress: () => setIsNotesModalVisible(true),
         },
       ]
     );
@@ -420,27 +430,51 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
             {INDONESIAN_MONTHS_SHORT[selectedMonthIndex]}
           </Text>
           <View style={styles.notesCountBadge}>
-            <Text style={styles.notesCountText}>0 catatan</Text>
+            <Text style={styles.notesCountText}>{notesForDay.length} catatan</Text>
           </View>
         </View>
 
-        <View style={styles.actionableEmptyNotesCard}>
-          <View style={styles.emptyNotesIconCircle}>
-            <FileText size={20} color="#2563EB" />
+        {notesForDay.length > 0 ? (
+          <View style={{ gap: 8, marginBottom: 16 }}>
+            {notesForDay.map((note) => (
+              <View key={note.id} style={styles.noteItemCard}>
+                <View style={styles.noteItemHeader}>
+                  <View style={styles.noteBadge}>
+                    <BookOpen size={11} color="#2563EB" />
+                    <Text style={styles.noteBadgeText}>{note.subject?.name || 'Umum'}</Text>
+                  </View>
+                </View>
+                <Text style={styles.noteItemContent}>{note.content}</Text>
+              </View>
+            ))}
+            <TouchableOpacity
+              style={styles.addMoreNotesBtn}
+              onPress={() => setIsNotesModalVisible(true)}
+              activeOpacity={0.85}
+            >
+              <Plus size={14} color="#2563EB" style={{ marginRight: 6 }} />
+              <Text style={styles.addMoreNotesBtnText}>Tambah Catatan Lainnya</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.emptyNotesTitle}>Belum ada catatan materi</Text>
-          <Text style={styles.emptyNotesSubtitle}>
-            Tulis rangkuman penting, rumus, atau tugas materi untuk hari {selectedDay}.
-          </Text>
-          <TouchableOpacity
-            style={styles.emptyNotesCtaBtn}
-            onPress={handleOpenAddOptions}
-            activeOpacity={0.85}
-          >
-            <Plus size={14} color="#2563EB" style={{ marginRight: 4 }} />
-            <Text style={styles.emptyNotesCtaText}>Tulis Catatan Cepat</Text>
-          </TouchableOpacity>
-        </View>
+        ) : (
+          <View style={styles.actionableEmptyNotesCard}>
+            <View style={styles.emptyNotesIconCircle}>
+              <FileText size={20} color="#2563EB" />
+            </View>
+            <Text style={styles.emptyNotesTitle}>Belum ada catatan materi</Text>
+            <Text style={styles.emptyNotesSubtitle}>
+              Tulis rangkuman penting, rumus, atau tugas materi untuk hari {selectedDay}.
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyNotesCtaBtn}
+              onPress={() => setIsNotesModalVisible(true)}
+              activeOpacity={0.85}
+            >
+              <Plus size={14} color="#2563EB" style={{ marginRight: 4 }} />
+              <Text style={styles.emptyNotesCtaText}>Tulis Catatan Cepat</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
 
       {/* =========================================================
@@ -549,6 +583,13 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
       <AddExamModal
         visible={isExamModalVisible}
         onClose={() => setIsExamModalVisible(false)}
+      />
+
+      {/* Quick Notes Management Modal */}
+      <NotesModal
+        visible={isNotesModalVisible}
+        onClose={() => setIsNotesModalVisible(false)}
+        defaultDate={currentActiveDayItem.fullDateStr}
       />
     </View>
   );
@@ -1090,6 +1131,53 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF6FF',
   },
   resetToTodayBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  noteItemCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  noteItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  noteBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  noteBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  noteItemContent: {
+    fontSize: 13,
+    color: '#1E293B',
+    lineHeight: 18,
+  },
+  addMoreNotesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#BFDBFE',
+  },
+  addMoreNotesBtnText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#2563EB',

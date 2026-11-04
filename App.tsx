@@ -10,6 +10,7 @@ import { LocalDataRepository } from './src/db/repository';
 import { LocalNotificationService } from './src/shared/notifications/notificationService';
 import { setTasks } from './src/features/tasks/taskSlice';
 import { setSubjects, setSchedules, setExams } from './src/features/schedule/scheduleSlice';
+import { setNotes } from './src/features/notes/noteSlice';
 import { setUserProfile } from './src/features/user/userSlice';
 import { OnboardingScreen } from './src/features/onboarding/OnboardingScreen';
 import { BottomTabNavigator } from './src/shared/navigation/BottomTabNavigator';
@@ -27,18 +28,36 @@ const MainAppContent: React.FC = () => {
     try {
       const savedProfile = LocalDataRepository.loadUserProfile();
       if (savedProfile && savedProfile.hasCompletedOnboarding) {
-        dispatch(setUserProfile(savedProfile));
+        if (savedProfile.lastActiveDate) {
+          const today = new Date().toISOString().split('T')[0];
+          const [y1, m1, d1] = savedProfile.lastActiveDate.split('-').map(Number);
+          const [y2, m2, d2] = today.split('-').map(Number);
+          const prevUTC = Date.UTC(y1, m1 - 1, d1);
+          const todayUTC = Date.UTC(y2, m2 - 1, d2);
+          const diffDays = Math.round((todayUTC - prevUTC) / (1000 * 60 * 60 * 24));
+          if (diffDays > 1 && savedProfile.streakDays > 0) {
+            const updated = { ...savedProfile, streakDays: 0 };
+            LocalDataRepository.saveUserProfile(updated);
+            dispatch(setUserProfile(updated));
+          } else {
+            dispatch(setUserProfile(savedProfile));
+          }
+        } else {
+          dispatch(setUserProfile(savedProfile));
+        }
       }
 
       const subjects = LocalDataRepository.loadSubjects();
       const schedules = LocalDataRepository.loadSchedules();
       const tasks = LocalDataRepository.loadTasks();
       const exams = LocalDataRepository.loadExams();
+      const notes = LocalDataRepository.loadNotes();
 
       dispatch(setSubjects(subjects));
       dispatch(setSchedules(schedules));
       dispatch(setTasks(tasks));
       dispatch(setExams(exams));
+      dispatch(setNotes(notes));
     } catch (err) {
       console.warn('Failed to load initial data from SQLite:', err);
     }

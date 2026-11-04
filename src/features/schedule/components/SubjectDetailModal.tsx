@@ -14,6 +14,9 @@ import { useAppDispatch, useAppSelector } from '../../../store/store';
 import { ScheduleWithSubject, deleteSchedule } from '../scheduleSlice';
 import { addTask, toggleTaskCompletion } from '../../tasks/taskSlice';
 import { autoGenerateSubtasks } from '../../tasks/subtaskEngine';
+import { LocalDataRepository } from '../../../db/repository';
+import { generateId } from '../../../shared/utils/idGenerator';
+import { getEndOfWeekDeadlineISO } from '../../../shared/utils/dateUtils';
 import {
   X,
   Clock,
@@ -52,34 +55,38 @@ export const SubjectDetailModal: React.FC<SubjectDetailModalProps> = ({
 
   const handleCreateTask = () => {
     if (!newTaskTitle.trim()) return;
-    const taskId = Date.now();
+    const taskId = generateId();
     const generated = autoGenerateSubtasks(newTaskTitle.trim(), schedule.subject.name);
-    const subtasks = generated.map((g, idx) => ({
-      id: taskId + 1 + idx,
+    const subtasks = generated.map((g) => ({
+      id: generateId(),
       taskId: taskId,
       title: g.title,
       isCompleted: false,
       orderIdx: g.orderIdx,
     }));
 
-    dispatch(
-      addTask({
-        id: taskId,
-        title: newTaskTitle.trim(),
-        subjectId: schedule.subjectId,
-        priority: 'normal',
-        isCompleted: false,
-        deadlineDate: 'Minggu Ini',
-        createdAt: new Date().toISOString(),
-        subtasks,
-      })
-    );
+    const deadlineISO = getEndOfWeekDeadlineISO();
+    const newTask = {
+      id: taskId,
+      title: newTaskTitle.trim(),
+      subjectId: schedule.subjectId,
+      priority: 'normal' as const,
+      isCompleted: false,
+      deadlineDate: deadlineISO,
+      createdAt: new Date().toISOString(),
+      subtasks,
+    };
+
+    dispatch(addTask(newTask));
+    LocalDataRepository.saveTask(newTask);
+
     setNewTaskTitle('');
     setIsAddingTask(false);
   };
 
   const handleDeleteSchedule = () => {
     dispatch(deleteSchedule(schedule.id));
+    LocalDataRepository.deleteSchedule(schedule.id);
     onClose();
   };
 

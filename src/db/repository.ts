@@ -1,9 +1,8 @@
-import * as SQLite from 'expo-sqlite';
+import { getDb } from './client';
 import { Subject, Schedule, Task, Subtask, Exam, Note } from './schema';
 import { TaskWithSubtasks } from '../features/tasks/taskSlice';
 import { ScheduleWithSubject, ExamWithSubject } from '../features/schedule/scheduleSlice';
-
-const getDb = () => SQLite.openDatabaseSync('myasisstent.db');
+import { NoteWithSubject } from '../features/notes/noteSlice';
 
 export class LocalDataRepository {
   /**
@@ -169,7 +168,7 @@ export class LocalDataRepository {
   }
 
   /**
-   * Save task and its subtasks
+   * Save task and sync its subtasks (removing deleted subtasks)
    */
   static saveTask(task: TaskWithSubtasks): void {
     try {
@@ -188,13 +187,21 @@ export class LocalDataRepository {
         ]
       );
 
-      // Save subtasks
-      for (const sub of task.subtasks) {
-        db.runSync(
-          `INSERT OR REPLACE INTO subtasks (id, task_id, title, is_completed, order_idx)
-           VALUES (?, ?, ?, ?, ?);`,
-          [sub.id, task.id, sub.title, sub.isCompleted ? 1 : 0, sub.orderIdx]
-        );
+      // Clean up orphaned subtasks removed from the task
+      if (task.subtasks && task.subtasks.length > 0) {
+        const subtaskIds = task.subtasks.map((s) => s.id).join(',');
+        db.runSync(`DELETE FROM subtasks WHERE task_id = ? AND id NOT IN (${subtaskIds});`, [task.id]);
+
+        // Upsert existing subtasks
+        for (const sub of task.subtasks) {
+          db.runSync(
+            `INSERT OR REPLACE INTO subtasks (id, task_id, title, is_completed, order_idx)
+             VALUES (?, ?, ?, ?, ?);`,
+            [sub.id, task.id, sub.title, sub.isCompleted ? 1 : 0, sub.orderIdx]
+          );
+        }
+      } else {
+        db.runSync('DELETE FROM subtasks WHERE task_id = ?;', [task.id]);
       }
     } catch (err) {
       console.warn('Failed to save task to SQLite:', err);
@@ -202,7 +209,7 @@ export class LocalDataRepository {
   }
 
   /**
-   * Delete task and subtasks
+   * Delete task and all its subtasks
    */
   static deleteTask(taskId: number): void {
     try {
@@ -211,6 +218,49 @@ export class LocalDataRepository {
       db.runSync('DELETE FROM tasks WHERE id = ?;', [taskId]);
     } catch (err) {
       console.warn('Failed to delete task from SQLite:', err);
+    }
+  }
+
+  /**
+   * Delete single subtask
+   */
+  static deleteSubtask(subtaskId: number): void {
+    try {
+      const db = getDb();
+      db.runSync('DELETE FROM subtasks WHERE id = ?;', [subtaskId]);
+    } catch (err) {
+      console.warn('Failed to delete subtask from SQLite:', err);
+    }
+  }
+
+  /**
+   * Save or insert single subtask
+   */
+  static saveSubtask(subtask: Subtask): void {
+    try {
+      const db = getDb();
+      db.runSync(
+        `INSERT OR REPLACE INTO subtasks (id, task_id, title, is_completed, order_idx)
+         VALUES (?, ?, ?, ?, ?);`,
+        [subtask.id, subtask.taskId, subtask.title, subtask.isCompleted ? 1 : 0, subtask.orderIdx]
+      );
+    } catch (err) {
+      console.warn('Failed to save subtask to SQLite:', err);
+    }
+  }
+
+  /**
+   * Update subtask completion status directly
+   */
+  static updateSubtaskCompletion(subtaskId: number, isCompleted: boolean): void {
+    try {
+      const db = getDb();
+      db.runSync('UPDATE subtasks SET is_completed = ? WHERE id = ?;', [
+        isCompleted ? 1 : 0,
+        subtaskId,
+      ]);
+    } catch (err) {
+      console.warn('Failed to update subtask completion in SQLite:', err);
     }
   }
 
@@ -290,6 +340,72 @@ export class LocalDataRepository {
   }
 
   /**
+   * Load all notes with joined subject
+   */
+  static loadNotes(): NoteWithSubject[] {
+    try {
+      const db = getDb();
+      const rows = db.getAllSync<any>(`
+        SELECT 
+          n.id, n.subject_id as subjectId, n.date, n.content, n.created_at as createdAt,
+          sub.id as sub_id, sub.name as sub_name, sub.color as sub_color, sub.bg_color as sub_bgColor, sub.initial as sub_initial
+        FROM notes n
+        LEFT JOIN subjects sub ON n.subject_id = sub.id
+        ORDER BY n.id DESC;
+      `);
+
+      return rows.map((r) => ({
+        id: r.id,
+        subjectId: r.subjectId,
+        date: r.date,
+        content: r.content,
+        createdAt: r.createdAt,
+        subject: r.sub_id
+          ? {
+              id: r.sub_id,
+              name: r.sub_name,
+              room: '',
+              color: r.sub_color || '#2563EB',
+              bgColor: r.sub_bgColor || '#DBEAFE',
+              initial: r.sub_initial || 'M',
+            }
+          : undefined,
+      }));
+    } catch (err) {
+      console.warn('Failed to load notes from SQLite:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Save note
+   */
+  static saveNote(note: NoteWithSubject): void {
+    try {
+      const db = getDb();
+      db.runSync(
+        `INSERT OR REPLACE INTO notes (id, subject_id, date, content, created_at)
+         VALUES (?, ?, ?, ?, ?);`,
+        [note.id, note.subjectId, note.date, note.content, note.createdAt]
+      );
+    } catch (err) {
+      console.warn('Failed to save note to SQLite:', err);
+    }
+  }
+
+  /**
+   * Delete note
+   */
+  static deleteNote(noteId: number): void {
+    try {
+      const db = getDb();
+      db.runSync('DELETE FROM notes WHERE id = ?;', [noteId]);
+    } catch (err) {
+      console.warn('Failed to delete note from SQLite:', err);
+    }
+  }
+
+  /**
    * Load user profile from SQLite
    */
   static loadUserProfile(): {
@@ -301,6 +417,7 @@ export class LocalDataRepository {
     currentExp: number;
     maxExp: number;
     streakDays: number;
+    lastActiveDate: string;
     hasCompletedOnboarding: boolean;
   } | null {
     try {
@@ -316,6 +433,7 @@ export class LocalDataRepository {
         currentExp: row.current_exp || 0,
         maxExp: row.max_exp || 100,
         streakDays: row.streak_days || 0,
+        lastActiveDate: row.last_active_date || '',
         hasCompletedOnboarding: Boolean(row.has_completed_onboarding),
       };
     } catch (err) {
@@ -336,14 +454,15 @@ export class LocalDataRepository {
     currentExp?: number;
     maxExp?: number;
     streakDays?: number;
+    lastActiveDate?: string;
     hasCompletedOnboarding?: boolean;
   }): void {
     try {
       const db = getDb();
       db.runSync(
         `INSERT OR REPLACE INTO user_profile (
-          id, name, school, grade, current_level, level_title, current_exp, max_exp, streak_days, has_completed_onboarding
-        ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          id, name, school, grade, current_level, level_title, current_exp, max_exp, streak_days, last_active_date, has_completed_onboarding
+        ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           profile.name,
           profile.school || '',
@@ -353,6 +472,7 @@ export class LocalDataRepository {
           profile.currentExp ?? 0,
           profile.maxExp ?? 100,
           profile.streakDays ?? 0,
+          profile.lastActiveDate || '',
           profile.hasCompletedOnboarding ? 1 : 0,
         ]
       );
@@ -361,4 +481,3 @@ export class LocalDataRepository {
     }
   }
 }
-

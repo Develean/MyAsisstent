@@ -15,6 +15,7 @@ import { useAppDispatch, useAppSelector } from '../../../store/store';
 import { addExam } from '../scheduleSlice';
 import { LocalDataRepository } from '../../../db/repository';
 import { LocalNotificationService } from '../../../shared/notifications/notificationService';
+import { generateId } from '../../../shared/utils/idGenerator';
 import { X, Calendar, Plus, AlertCircle } from 'lucide-react-native';
 
 interface AddExamModalProps {
@@ -42,7 +43,7 @@ export const AddExamModal: React.FC<AddExamModalProps> = ({ visible, onClose }) 
     const selectedSubject = subjects.find((s) => s.id === selectedSubjectId);
 
     const newExam = {
-      id: Date.now(),
+      id: generateId(),
       title: title.trim(),
       subjectId: selectedSubjectId,
       examDate: dateStr,

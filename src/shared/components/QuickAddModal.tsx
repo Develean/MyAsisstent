@@ -16,6 +16,8 @@ import { addSchedule, addSubject } from '../../features/schedule/scheduleSlice';
 import { autoGenerateSubtasks } from '../../features/tasks/subtaskEngine';
 import { LocalDataRepository } from '../../db/repository';
 import { LocalNotificationService } from '../notifications/notificationService';
+import { generateId } from '../utils/idGenerator';
+import { getDefaultTomorrowDeadlineISO } from '../utils/dateUtils';
 import { CheckSquare, Calendar, X, Plus, Sparkles } from 'lucide-react-native';
 
 interface QuickAddModalProps {
@@ -40,22 +42,23 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
   const handleSave = () => {
     if (mode === 'task') {
       if (!taskTitle.trim()) return;
-      const taskId = Date.now();
+      const taskId = generateId();
       const generated = autoBreakdown ? autoGenerateSubtasks(taskTitle.trim()) : [];
-      const subtasks = generated.map((g, idx) => ({
-        id: taskId + 1 + idx,
+      const subtasks = generated.map((g) => ({
+        id: generateId(),
         taskId: taskId,
         title: g.title,
         isCompleted: false,
         orderIdx: g.orderIdx,
       }));
 
+      const deadlineISO = getDefaultTomorrowDeadlineISO();
       const newTask = {
         id: taskId,
         title: taskTitle.trim(),
         priority: taskPriority,
         isCompleted: false,
-        deadlineDate: 'Besok, 23:59',
+        deadlineDate: deadlineISO,
         createdAt: new Date().toISOString(),
         subtasks: subtasks,
         subjectId: null,
@@ -64,20 +67,17 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
       dispatch(addTask(newTask));
       LocalDataRepository.saveTask(newTask);
 
-      // Schedule deadline notification for tomorrow
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(23, 59, 0, 0);
+      // Schedule deadline notification for tomorrow using ISO string
       LocalNotificationService.scheduleTaskDeadlineReminder(
         taskId,
         newTask.title,
-        tomorrow.toISOString()
+        deadlineISO
       );
 
       setTaskTitle('');
     } else {
       if (!subjectName.trim()) return;
-      const subId = Date.now();
+      const subId = generateId();
       const newSubject = {
         id: subId,
         name: subjectName.trim(),
@@ -90,7 +90,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
       LocalDataRepository.saveSubject(newSubject);
 
       const newSchedule = {
-        id: Date.now() + 1,
+        id: generateId(),
         subjectId: subId,
         dayOfWeek: selectedDay,
         startTime: startTime || '07:30',

@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Task, Subtask } from '../../db/schema';
 import { autoGenerateSubtasks } from './subtaskEngine';
+import { generateId } from '../../shared/utils/idGenerator';
 
 export interface TaskWithSubtasks extends Task {
   subtasks: Subtask[];
@@ -66,7 +67,7 @@ export const taskSlice = createSlice({
       const task = state.tasks.find((t) => t.id === action.payload.taskId);
       if (task && action.payload.title.trim()) {
         const newSubtask: Subtask = {
-          id: Date.now(),
+          id: generateId(),
           taskId: task.id,
           title: action.payload.title.trim(),
           isCompleted: false,
@@ -95,8 +96,8 @@ export const taskSlice = createSlice({
       const task = state.tasks.find((t) => t.id === action.payload.taskId);
       if (task) {
         const generated = autoGenerateSubtasks(task.title, action.payload.subjectName);
-        task.subtasks = generated.map((g, idx) => ({
-          id: Date.now() + idx,
+        task.subtasks = generated.map((g) => ({
+          id: generateId(),
           taskId: task.id,
           title: g.title,
           isCompleted: false,

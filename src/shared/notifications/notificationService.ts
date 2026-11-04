@@ -122,6 +122,35 @@ export class LocalNotificationService {
   }
 
   /**
+   * Schedule notification when Focus timer finishes
+   */
+  static async scheduleFocusEndReminder(
+    durationSeconds: number,
+    taskTitle?: string
+  ): Promise<string | null> {
+    try {
+      const notifId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Sesi Fokus Selesai!',
+          body: taskTitle
+            ? `Target fokus untuk "${taskTitle}" tuntas. Ambil jeda istirahat sejenak!`
+            : 'Sesi belajarmu tuntas! Klaim reward EXP kamu sekarang.',
+          data: { type: 'focus_completed' },
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: Math.max(1, durationSeconds),
+        },
+      });
+      return notifId;
+    } catch (err) {
+      console.warn('Failed to schedule focus end notification:', err);
+      return null;
+    }
+  }
+
+  /**
    * Cancel specific scheduled notification
    */
   static async cancelNotification(notificationId: string): Promise<void> {

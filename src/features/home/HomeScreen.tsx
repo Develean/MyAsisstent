@@ -17,7 +17,7 @@ import {
   toggleTaskCompletion,
   toggleSubtaskCompletion,
 } from '../tasks/taskSlice';
-import { addExp } from '../user/userSlice';
+import { addExp, recordDailyActivity } from '../user/userSlice';
 import { setActiveTask } from '../focus/focusSlice';
 import { TaskDetailModal } from '../tasks/components/TaskDetailModal';
 import {
@@ -31,6 +31,8 @@ import {
   BookOpen,
 } from 'lucide-react-native';
 import { ActionFeedbackToast, ToastType } from '../../shared/components/ActionFeedbackToast';
+import { formatDeadlineDisplay } from '../../shared/utils/dateUtils';
+import { NotesModal } from '../notes/components/NotesModal';
 
 interface HomeScreenProps {
   onOpenAddModal?: () => void;
@@ -57,6 +59,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
     subMessage: '',
     type: 'success',
   });
+
+  const [isNotesModalVisible, setIsNotesModalVisible] = useState(false);
 
   const showToast = (message: string, subMessage?: string, type: ToastType = 'success') => {
     setToast({ visible: true, message, subMessage, type });
@@ -93,6 +97,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
     dispatch(toggleTaskCompletion(task.id));
     if (willComplete) {
       dispatch(addExp(20));
+      dispatch(recordDailyActivity());
       showToast('Tugas Selesai!', '+20 EXP ditambahkan ke profilmu', 'exp');
     } else {
       showToast('Status Tugas Diperbarui', 'Tugas dikembalikan ke antrean aktif', 'info');
@@ -100,14 +105,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
   };
 
   const handleQuickNote = () => {
-    Alert.alert(
-      'Catatan Cepat',
-      'Fitur catatan cepat aktif! Ingin mencatat pengingat materi atau tugas baru?',
-      [
-        { text: 'Tutup', style: 'cancel' },
-        { text: '+ Tambah Tugas', onPress: onOpenAddModal },
-      ]
-    );
+    setIsNotesModalVisible(true);
   };
 
   return (
@@ -273,7 +271,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
                     onPress={() => setSelectedTask(t)}
                   >
                     <Text style={styles.taskTitleText} numberOfLines={1}>{t.title}</Text>
-                    <Text style={styles.taskDeadlineText}>{t.deadlineDate || 'Hari ini'}</Text>
+                    <Text style={styles.taskDeadlineText}>{formatDeadlineDisplay(t.deadlineDate)}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -331,6 +329,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
           setSelectedTask(null);
           if (onNavigateTab) onNavigateTab('Fokus');
         }}
+      />
+
+      {/* Quick Notes Management Modal */}
+      <NotesModal
+        visible={isNotesModalVisible}
+        onClose={() => setIsNotesModalVisible(false)}
       />
 
       {/* Floating Action Feedback Toast */}

@@ -2,19 +2,41 @@ import * as SQLite from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import * as schema from './schema';
 
-let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
-let rawDb: SQLite.SQLiteDatabase | null = null;
+export const DB_NAME = 'myasisten.db';
+export const LEGACY_DB_NAME = 'myasisstent.db';
 
-export const getDb = () => {
-  if (!dbInstance) {
-    rawDb = SQLite.openDatabaseSync('myasisstent.db');
-    dbInstance = drizzle(rawDb, { schema });
+let sqliteDbInstance: SQLite.SQLiteDatabase | null = null;
+let drizzleDbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
+
+/**
+ * Returns the unified singleton SQLite database instance.
+ */
+export const getRawDb = (): SQLite.SQLiteDatabase => {
+  if (!sqliteDbInstance) {
+    sqliteDbInstance = SQLite.openDatabaseSync(DB_NAME);
   }
-  return dbInstance;
+  return sqliteDbInstance;
 };
 
+/**
+ * Returns the unified Drizzle ORM instance wrapping the same SQLite handle.
+ */
+export const getDrizzleDb = () => {
+  if (!drizzleDbInstance) {
+    const raw = getRawDb();
+    drizzleDbInstance = drizzle(raw, { schema });
+  }
+  return drizzleDbInstance;
+};
+
+// Default export alias
+export const getDb = getRawDb;
+
+/**
+ * Initialize database tables and run migrations.
+ */
 export const initDatabase = async () => {
-  const db = SQLite.openDatabaseSync('myasisstent.db');
+  const db = getRawDb();
 
   // Execute Table Creations
   db.execSync(`
@@ -85,10 +107,39 @@ export const initDatabase = async () => {
       current_exp INTEGER NOT NULL DEFAULT 0,
       max_exp INTEGER NOT NULL DEFAULT 100,
       streak_days INTEGER NOT NULL DEFAULT 0,
+      last_active_date TEXT NOT NULL DEFAULT '',
       has_completed_onboarding INTEGER NOT NULL DEFAULT 0
     );
   `);
 
-  console.log('[SQLite] Local database initialized successfully: myasisstent.db');
-};
+  // Migration: Ensure last_active_date column exists if table was created previously
+  try {
+    db.execSync(`ALTER TABLE user_profile ADD COLUMN last_active_date TEXT NOT NULL DEFAULT '';`);
+  } catch {
+    // Column already exists, safe to ignore
+  }
 
+  // Automatic Migration from Legacy DB name (myasisstent.db) if it exists
+  try {
+    const legacyCheck = db.getFirstSync<any>('SELECT COUNT(*) as count FROM user_profile;');
+    if (!legacyCheck || legacyCheck.count === 0) {
+      // Check if legacy database has data to copy over
+      db.execSync(`
+        ATTACH DATABASE '${LEGACY_DB_NAME}' AS old_db;
+        INSERT OR IGNORE INTO user_profile SELECT id, name, school, grade, current_level, level_title, current_exp, max_exp, streak_days, '', has_completed_onboarding FROM old_db.user_profile;
+        INSERT OR IGNORE INTO subjects SELECT * FROM old_db.subjects;
+        INSERT OR IGNORE INTO schedules SELECT * FROM old_db.schedules;
+        INSERT OR IGNORE INTO tasks SELECT * FROM old_db.tasks;
+        INSERT OR IGNORE INTO subtasks SELECT * FROM old_db.subtasks;
+        INSERT OR IGNORE INTO exams SELECT * FROM old_db.exams;
+        INSERT OR IGNORE INTO notes SELECT * FROM old_db.notes;
+        DETACH DATABASE old_db;
+      `);
+      console.log('[SQLite] Successfully migrated legacy data from myasisstent.db to myasisten.db');
+    }
+  } catch {
+    // Legacy database didn't exist or already migrated
+  }
+
+  console.log(`[SQLite] Local database initialized successfully: ${DB_NAME}`);
+};

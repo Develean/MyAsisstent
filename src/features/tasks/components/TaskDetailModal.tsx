@@ -22,7 +22,7 @@ import {
   deleteTask,
 } from '../taskSlice';
 import { setActiveTask } from '../../focus/focusSlice';
-import { addExp } from '../../user/userSlice';
+import { addExp, recordDailyActivity } from '../../user/userSlice';
 import { LocalDataRepository } from '../../../db/repository';
 import {
   X,
@@ -34,6 +34,8 @@ import {
 } from 'lucide-react-native';
 import { AnimatedCheckbox } from '../../../shared/components/AnimatedCheckbox';
 import { ActionFeedbackToast, ToastType } from '../../../shared/components/ActionFeedbackToast';
+import { formatDeadlineDisplay } from '../../../shared/utils/dateUtils';
+import { generateId } from '../../../shared/utils/idGenerator';
 
 interface TaskDetailModalProps {
   task: TaskWithSubtasks | null;
@@ -77,8 +79,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const handleToggleMainTask = () => {
     const willComplete = !task.isCompleted;
     dispatch(toggleTaskCompletion(task.id));
+    const updated = {
+      ...task,
+      isCompleted: willComplete,
+      subtasks: task.subtasks.map((s) => ({ ...s, isCompleted: willComplete })),
+    };
+    LocalDataRepository.saveTask(updated);
+
     if (willComplete) {
       dispatch(addExp(20));
+      dispatch(recordDailyActivity());
       showToast('Tugas Tuntas!', '+20 EXP berhasil didapatkan', 'exp');
     } else {
       showToast('Status Tugas Diperbarui', 'Tugas dikembalikan ke antrean aktif', 'info');
@@ -87,8 +97,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   const handleToggleSubtask = (subId: number, currentCompleted: boolean) => {
     dispatch(toggleSubtaskCompletion({ taskId: task.id, subtaskId: subId }));
+    LocalDataRepository.updateSubtaskCompletion(subId, !currentCompleted);
+
     if (!currentCompleted) {
       dispatch(addExp(5));
+      dispatch(recordDailyActivity());
       showToast('Langkah Mini Selesai!', '+5 EXP ditambahkan', 'exp');
     } else {
       showToast('Subtask Diperbarui', 'Subtask dikembalikan', 'info');
@@ -98,14 +111,32 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const handleAddSubtask = () => {
     if (!newSubtaskTitle.trim()) return;
     const title = newSubtaskTitle.trim();
+    const newSubtask = {
+      id: generateId(),
+      taskId: task.id,
+      title,
+      isCompleted: false,
+      orderIdx: task.subtasks.length,
+    };
     dispatch(addSubtask({ taskId: task.id, title }));
+    LocalDataRepository.saveSubtask(newSubtask);
     showToast('Langkah Ditambahkan', title, 'info');
     setNewSubtaskTitle('');
   };
 
   const handleAutoBreakdown = () => {
     dispatch(autoBreakdownTask({ taskId: task.id }));
+    setTimeout(() => {
+      // Load current task from DB or state to persist breakdown
+      LocalDataRepository.saveTask(task);
+    }, 100);
     showToast('Langkah Mini Dibuat', 'Tugas dipecah otomatis jadi 3 langkah', 'success');
+  };
+
+  const handleDeleteSubtask = (subId: number) => {
+    dispatch(deleteSubtask({ taskId: task.id, subtaskId: subId }));
+    LocalDataRepository.deleteSubtask(subId);
+    showToast('Subtask Dihapus', 'Langkah pengerjaan telah dihapus', 'info');
   };
 
   const handleStartFocus = () => {
@@ -150,7 +181,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   {task.deadlineDate ? (
                     <View style={styles.deadlineContainer}>
                       <Clock size={12} color="#EF4444" />
-                      <Text style={styles.deadlineText}>{task.deadlineDate}</Text>
+                      <Text style={styles.deadlineText}>{formatDeadlineDisplay(task.deadlineDate)}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -233,9 +264,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         {sub.title}
                       </Text>
                       <TouchableOpacity
-                        onPress={() =>
-                          dispatch(deleteSubtask({ taskId: task.id, subtaskId: sub.id }))
-                        }
+                        onPress={() => handleDeleteSubtask(sub.id)}
                         style={styles.deleteSubtaskBtn}
                       >
                         <Trash2 size={15} color="#94A3B8" />

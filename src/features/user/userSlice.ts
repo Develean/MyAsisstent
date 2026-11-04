@@ -9,6 +9,7 @@ export interface UserState {
   currentExp: number;
   maxExp: number;
   streakDays: number;
+  lastActiveDate: string;
   hasCompletedOnboarding: boolean;
 }
 
@@ -21,6 +22,7 @@ const initialState: UserState = {
   currentExp: 0,
   maxExp: 100,
   streakDays: 0,
+  lastActiveDate: '',
   hasCompletedOnboarding: false,
 };
 
@@ -61,6 +63,29 @@ export const userSlice = createSlice({
     incrementStreak: (state) => {
       state.streakDays += 1;
     },
+    recordDailyActivity: (state) => {
+      const today = new Date().toISOString().split('T')[0];
+      if (!state.lastActiveDate) {
+        state.streakDays = 1;
+        state.lastActiveDate = today;
+      } else if (state.lastActiveDate === today) {
+        // Already active today, streak intact
+        return;
+      } else {
+        const [y1, m1, d1] = state.lastActiveDate.split('-').map(Number);
+        const [y2, m2, d2] = today.split('-').map(Number);
+        const prevUTC = Date.UTC(y1, m1 - 1, d1);
+        const todayUTC = Date.UTC(y2, m2 - 1, d2);
+        const diffDays = Math.round((todayUTC - prevUTC) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          state.streakDays += 1;
+        } else if (diffDays > 1) {
+          state.streakDays = 1;
+        }
+        state.lastActiveDate = today;
+      }
+    },
     resetOnboarding: (state) => {
       state.hasCompletedOnboarding = false;
     },
@@ -73,6 +98,7 @@ export const {
   completeOnboarding,
   addExp,
   incrementStreak,
+  recordDailyActivity,
   resetOnboarding,
 } = userSlice.actions;
 export default userSlice.reducer;
