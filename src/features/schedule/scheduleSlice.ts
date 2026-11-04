@@ -28,8 +28,8 @@ const initialState: ScheduleState = {
   schedules: [],
   subjects: [],
   exams: [],
-  selectedDay: getTodayDayName(),
-  selectedDate: new Date().toISOString().split('T')[0],
+  selectedDay: 'Jumat',
+  selectedDate: '2026-10-30',
 };
 
 export const scheduleSlice = createSlice({

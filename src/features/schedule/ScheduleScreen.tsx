@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -109,6 +109,17 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
   const [isMonthPickerVisible, setIsMonthPickerVisible] = useState<boolean>(false);
   const [pickerTempYear, setPickerTempYear] = useState<number>(2026);
 
+  // Sync Redux selectedDay with the initial UI date on first mount.
+  // Without this, selectedDay stays at "today" from the slice initialState
+  // while the calendar renders a different date, causing the state mismatch bug.
+  useEffect(() => {
+    const initDate = new Date(2026, 9, 30); // 30 Oktober 2026 (Jumat)
+    const dayName = INDONESIAN_DAYS_FULL[initDate.getDay()];
+    const fullDateStr = '2026-10-30';
+    dispatch(setSelectedDay(dayName));
+    dispatch(setSelectedDate(fullDateStr));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleWithSubject | null>(null);
   const [isExamModalVisible, setIsExamModalVisible] = useState(false);
   const [isNotesModalVisible, setIsNotesModalVisible] = useState(false);
@@ -153,7 +164,9 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
   useEffect(() => {
     if (stripScrollViewRef.current) {
       // Each day card has width 52px + 8px gap = 60px
-      const targetX = Math.max(0, (selectedDateNum - 1) * 60 - 100);
+      // Keep selected day comfortably centered in view so surrounding days (e.g. Min 25) are not clipped
+      const cardCenter = (selectedDateNum - 1) * 60 + 26;
+      const targetX = Math.max(0, cardCenter - 160);
       const timer = setTimeout(() => {
         stripScrollViewRef.current?.scrollTo({ x: targetX, animated: true });
       }, 120);
@@ -166,8 +179,16 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
     monthDaysList.find((d) => d.dateNum === selectedDateNum) ||
     monthDaysList[0];
 
-  // Real DB schedules for the selected day
-  const dbSchedulesForDay = schedules.filter((s) => s.dayOfWeek === selectedDay);
+  const activeDayName = currentActiveDayItem.dayName;
+
+  // Real DB schedules for the selected day - dynamically matches active calendar selection
+  const dbSchedulesForDay = schedules.filter((s) => s.dayOfWeek === activeDayName);
+
+  // Synchronize Redux selectedDay and selectedDate continuously with calendar state
+  useEffect(() => {
+    dispatch(setSelectedDay(activeDayName));
+    dispatch(setSelectedDate(currentActiveDayItem.fullDateStr));
+  }, [activeDayName, currentActiveDayItem.fullDateStr, dispatch]);
 
   // Notes for the selected day
   const notesForDay = notes.filter((n) => n.date === currentActiveDayItem.fullDateStr);
@@ -345,16 +366,18 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
             ========================================================= */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionDateText}>
-            {currentActiveDayItem.dayName}, {currentActiveDayItem.dateNum}{' '}
+            {activeDayName}, {currentActiveDayItem.dateNum}{' '}
             {INDONESIAN_MONTHS_SHORT[selectedMonthIndex]}
           </Text>
-          <Text style={styles.sectionCountText}>
-            {dbSchedulesForDay.length} mapel
-          </Text>
+          <View style={styles.counterBadge}>
+            <Text style={styles.counterBadgeText}>
+              {dbSchedulesForDay.length} mapel
+            </Text>
+          </View>
         </View>
 
         {/* =========================================================
-            5. SUBJECTS LIST CONTAINER (Single White Box with Dividers)
+            5. SUBJECTS LIST CONTAINER (Compact & Unified CTA)
             ========================================================= */}
         <View style={styles.timetableContainer}>
           {dbSchedulesForDay.length > 0 ? (
@@ -390,47 +413,50 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
               );
             })
           ) : (
-            <View style={styles.actionableEmptyCard}>
+            <View style={styles.compactEmptyScheduleBox}>
               <View style={styles.emptyIconCircle}>
-                <BookOpen size={24} color="#2563EB" />
+                <BookOpen size={20} color="#2563EB" />
               </View>
-              <Text style={styles.emptyTitle}>Belum ada jadwal di hari {selectedDay}</Text>
+              <Text style={styles.emptyTitle}>
+                Belum ada jadwal di hari {activeDayName}
+              </Text>
               <Text style={styles.emptySubtitle}>
-                Atur mata pelajaran untuk hari {selectedDay} agar jadwal kelasmu tertata rapi.
+                Atur mata pelajaran untuk hari {activeDayName} agar jadwal kelasmu tertata rapi.
               </Text>
               <TouchableOpacity
-                style={styles.emptyCtaButton}
-                onPress={() => onOpenAddSubjectModal && onOpenAddSubjectModal()}
+                style={styles.emptyPrimaryCtaBtn}
+                onPress={handleOpenAddOptions}
                 activeOpacity={0.85}
               >
-                <Plus size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.emptyCtaText}>Tambah Mapel Hari {selectedDay}</Text>
+                <Plus size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.emptyPrimaryCtaBtnText}>Tambah Mapel atau Ujian</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
 
-        {/* =========================================================
-            6. ADD BUTTON: + Tambah mapel atau ujian
-            ========================================================= */}
-        <TouchableOpacity
-          style={styles.addMapelUjianBtn}
-          onPress={handleOpenAddOptions}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.addMapelUjianBtnText}>+ Tambah mapel atau ujian</Text>
-        </TouchableOpacity>
+        {/* When schedules already exist, show add button below the list */}
+        {dbSchedulesForDay.length > 0 && (
+          <TouchableOpacity
+            style={styles.addMapelUjianBtn}
+            onPress={handleOpenAddOptions}
+            activeOpacity={0.85}
+          >
+            <Plus size={15} color="#2563EB" style={{ marginRight: 6 }} />
+            <Text style={styles.addMapelUjianBtnText}>Tambah Mapel atau Ujian</Text>
+          </TouchableOpacity>
+        )}
 
         {/* =========================================================
             7. CATATAN & MATERI HARI INI
             ========================================================= */}
         <View style={styles.notesSectionHeader}>
           <Text style={styles.notesHeaderTitle}>
-            Catatan {currentActiveDayItem.dayName}, {currentActiveDayItem.dateNum}{' '}
+            Catatan {activeDayName}, {currentActiveDayItem.dateNum}{' '}
             {INDONESIAN_MONTHS_SHORT[selectedMonthIndex]}
           </Text>
-          <View style={styles.notesCountBadge}>
-            <Text style={styles.notesCountText}>{notesForDay.length} catatan</Text>
+          <View style={styles.counterBadge}>
+            <Text style={styles.counterBadgeText}>{notesForDay.length} catatan</Text>
           </View>
         </View>
 
@@ -457,13 +483,13 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.actionableEmptyNotesCard}>
+          <View style={styles.compactEmptyNotesCard}>
             <View style={styles.emptyNotesIconCircle}>
-              <FileText size={20} color="#2563EB" />
+              <FileText size={18} color="#2563EB" />
             </View>
             <Text style={styles.emptyNotesTitle}>Belum ada catatan materi</Text>
             <Text style={styles.emptyNotesSubtitle}>
-              Tulis rangkuman penting, rumus, atau tugas materi untuk hari {selectedDay}.
+              Tulis rangkuman penting, rumus, atau tugas materi untuk hari {activeDayName}.
             </Text>
             <TouchableOpacity
               style={styles.emptyNotesCtaBtn}
@@ -632,10 +658,11 @@ const styles = StyleSheet.create({
   },
   weekStripWrapper: {
     marginTop: 16,
-    marginHorizontal: -20, // stretch to screen edges for smooth scrolling
+    marginHorizontal: -20,
   },
   weekStripScrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24, // wider edge padding prevents first item clipping
+    paddingVertical: 4,    // vertical room for card shadow
     flexDirection: 'row',
     gap: 8,
   },
@@ -745,10 +772,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#4A5670',
   },
-  sectionCountText: {
-    fontSize: 13,
+  // Unified counter badge — identical pill style across Mapel and Catatan
+  counterBadge: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  counterBadgeText: {
+    fontSize: 11,
     fontWeight: '700',
-    color: '#4A5670',
+    color: '#2563EB',
   },
   timetableContainer: {
     marginTop: 8,
@@ -816,16 +850,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   addMapelUjianBtn: {
-    marginTop: 16,
+    marginTop: 12,
     width: '100%',
     height: 48,
     borderRadius: 16,
-    backgroundColor: '#E3EAF4',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   addMapelUjianBtnText: {
-    color: '#0F1B33',
+    color: '#2563EB',
     fontWeight: '700',
     fontSize: 15,
   },
@@ -839,17 +876,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#4A5670',
-  },
-  notesCountBadge: {
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-  },
-  notesCountText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#2563EB',
   },
   notesListWrapper: {
     marginTop: 10,
@@ -926,82 +952,82 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  actionableEmptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
+  // Compact, Space-Efficient Schedule Empty State
+  compactEmptyScheduleBox: {
+    paddingVertical: 18,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#EDF1F7',
-    marginVertical: 4,
-    shadowColor: '#0F1B33',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
   },
   emptyIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   emptyTitle: {
     fontSize: 14,
     fontWeight: '800',
     color: '#0F1B33',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   emptySubtitle: {
     fontSize: 12,
     fontWeight: '500',
     color: '#64748B',
     textAlign: 'center',
-    lineHeight: 18,
-    paddingHorizontal: 10,
-    marginBottom: 14,
+    lineHeight: 16,
+    paddingHorizontal: 12,
+    marginBottom: 12,
   },
-  emptyCtaButton: {
+  emptyPrimaryCtaBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#2563EB',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 12,
     shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.18,
     shadowRadius: 4,
     elevation: 3,
   },
-  emptyCtaText: {
+  emptyPrimaryCtaBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
-  actionableEmptyNotesCard: {
-    marginTop: 10,
+  // Compact, Space-Efficient Notes Empty State
+  compactEmptyNotesCard: {
+    marginTop: 8,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#EDF1F7',
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
   },
   emptyNotesIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   emptyNotesTitle: {
     fontSize: 13,
@@ -1025,7 +1051,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF6FF',
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#BFDBFE',
   },
