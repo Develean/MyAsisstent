@@ -18,18 +18,27 @@ export interface ScheduleState {
   selectedDate: string;
 }
 
-const getTodayDayName = () => {
+const getInitialToday = () => {
+  const now = new Date();
   const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const today = dayNames[new Date().getDay()];
-  return today === 'Minggu' ? 'Senin' : today;
+  const todayDay = dayNames[now.getDay()];
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return {
+    selectedDay: todayDay,
+    selectedDate: `${y}-${m}-${d}`,
+  };
 };
+
+const initialToday = getInitialToday();
 
 const initialState: ScheduleState = {
   schedules: [],
   subjects: [],
   exams: [],
-  selectedDay: 'Jumat',
-  selectedDate: '2026-10-30',
+  selectedDay: initialToday.selectedDay,
+  selectedDate: initialToday.selectedDate,
 };
 
 export const scheduleSlice = createSlice({

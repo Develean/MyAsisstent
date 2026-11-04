@@ -208,18 +208,43 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
               const initial = sch.subject?.initial || sch.subject?.name?.charAt(0) || 'M';
               const bgColor = sch.subject?.bgColor || '#DBEAFE';
               const color = sch.subject?.color || '#1D4ED8';
+
+              const curMins = now.getHours() * 60 + now.getMinutes();
+              const parseM = (t?: string) => {
+                if (!t) return 0;
+                const [h, m] = t.split(':').map((x) => parseInt(x, 10) || 0);
+                return h * 60 + m;
+              };
+              const isOngoing = curMins >= parseM(sch.startTime) && curMins < parseM(sch.endTime || '09:00');
+
               return (
                 <TouchableOpacity
                   key={sch.id}
-                  style={[styles.scheduleRow, isLast && { borderBottomWidth: 0 }]}
+                  style={[
+                    styles.scheduleRow,
+                    isOngoing && { backgroundColor: '#F0FDF4' },
+                    isLast && { borderBottomWidth: 0 },
+                  ]}
                   onPress={() => onNavigateTab && onNavigateTab('Jadwal')}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.subjectIconBox, { backgroundColor: bgColor }]}>
                     <Text style={[styles.subjectInitial, { color: color }]}>{initial}</Text>
                   </View>
-                  <Text style={styles.subjectName}>{sch.subject?.name || 'Mata Pelajaran'}</Text>
-                  <Text style={styles.subjectTime}>{sch.startTime}</Text>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.subjectName} numberOfLines={1}>{sch.subject?.name || 'Mata Pelajaran'}</Text>
+                      {isOngoing && (
+                        <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: '#15803D' }}>Sedang Berlangsung</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '500' }}>{sch.subject?.room || 'Ruang Kelas'}</Text>
+                  </View>
+                  <Text style={[styles.subjectTime, isOngoing && { color: '#15803D', fontWeight: '800' }]}>
+                    {sch.startTime} - {sch.endTime || '09:00'}
+                  </Text>
                 </TouchableOpacity>
               );
             })}

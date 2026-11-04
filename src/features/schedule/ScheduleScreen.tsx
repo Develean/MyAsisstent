@@ -8,6 +8,7 @@ import {
   Platform,
   StatusBar,
   Alert,
+  AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector, useAppDispatch } from '../../store/store';
@@ -24,6 +25,8 @@ import {
   BookOpen,
   ChevronDown,
   Plus,
+  Clock,
+  RotateCcw,
 } from 'lucide-react-native';
 
 const INDONESIAN_MONTHS_SHORT = [
@@ -36,6 +39,11 @@ const INDONESIAN_DAYS_FULL = [
   'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu',
 ];
 
+const getNowTimeStr = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
 interface ScheduleScreenProps {
   onOpenAddSubjectModal?: () => void;
 }
@@ -46,32 +54,63 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
   const exams = useAppSelector((state) => state.schedule.exams);
   const notes = useAppSelector((state) => state.notes.notes);
 
-  // Month & Year State (Defaults to Oktober 2026 as master mockup)
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
-  const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(9); // 0-indexed: 9 = Oktober
-  const [selectedDateNum, setSelectedDateNum] = useState<number>(30); // 30 Okt (Jumat)
+  // Real-time current date initialization
+  const initialDate = useMemo(() => new Date(), []);
+  const [selectedYear, setSelectedYear] = useState<number>(initialDate.getFullYear());
+  const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(initialDate.getMonth());
+  const [selectedDateNum, setSelectedDateNum] = useState<number>(initialDate.getDate());
+  const [currentTime, setCurrentTime] = useState<string>(getNowTimeStr());
   const [isMonthPickerVisible, setIsMonthPickerVisible] = useState<boolean>(false);
 
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleWithSubject | null>(null);
   const [isExamModalVisible, setIsExamModalVisible] = useState(false);
   const [isNotesModalVisible, setIsNotesModalVisible] = useState(false);
 
-  // Initial mount synchronization
+  // Real-time clock tick (every 30 seconds)
   useEffect(() => {
-    const initDate = new Date(2026, 9, 30);
-    const dayName = INDONESIAN_DAYS_FULL[initDate.getDay()];
+    const timer = setInterval(() => {
+      setCurrentTime(getNowTimeStr());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Sync real-time clock when app becomes active
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        setCurrentTime(getNowTimeStr());
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
+  // Initial mount synchronization with REAL-TIME current date
+  useEffect(() => {
+    const today = new Date();
+    const dayName = INDONESIAN_DAYS_FULL[today.getDay()];
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
     dispatch(setSelectedDay(dayName));
-    dispatch(setSelectedDate('2026-10-30'));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    dispatch(setSelectedDate(`${y}-${m}-${d}`));
+  }, [dispatch]);
+
+  // Check if selected date is TODAY in real-time
+  const todayObj = new Date();
+  const isTodaySelected =
+    selectedYear === todayObj.getFullYear() &&
+    selectedMonthIndex === todayObj.getMonth() &&
+    selectedDateNum === todayObj.getDate();
 
   // Calculate days in the selected month
   const totalDaysInMonth = useMemo(() => {
     return new Date(selectedYear, selectedMonthIndex + 1, 0).getDate();
   }, [selectedYear, selectedMonthIndex]);
 
-  // Generate list of ALL days for the selected month
+  // Generate list of ALL days for the selected month with real-time isToday flag
   const monthDaysList = useMemo<CalendarDayItem[]>(() => {
     const list: CalendarDayItem[] = [];
+    const now = new Date();
     for (let d = 1; d <= totalDaysInMonth; d++) {
       const dateObj = new Date(selectedYear, selectedMonthIndex, d);
       const dayOfWeekIdx = dateObj.getDay();
@@ -79,6 +118,10 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
       const dayShort = INDONESIAN_DAYS_SHORT[dayOfWeekIdx];
       const fullDateStr = `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const hasDot = exams.some((e) => e.examDate === fullDateStr);
+      const isToday =
+        d === now.getDate() &&
+        selectedMonthIndex === now.getMonth() &&
+        selectedYear === now.getFullYear();
 
       list.push({
         dateNum: d,
@@ -86,6 +129,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
         dayName,
         fullDateStr,
         hasDot,
+        isToday,
       });
     }
     return list;
@@ -166,21 +210,43 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 1. TOP BAR: Title "Jadwal" & Clickable Month Button */}
+        {/* 1. TOP BAR: Title "Jadwal", Quick Today Button, & Clickable Month Button */}
         <View style={styles.topHeaderRow}>
-          <Text style={styles.screenTitle}>Jadwal</Text>
-          <TouchableOpacity
-            style={styles.calendarPillBtn}
-            onPress={() => setIsMonthPickerVisible(true)}
-            activeOpacity={0.8}
-            accessibilityLabel="Atur Bulan dan Tahun"
-          >
-            <Calendar size={14} color="#0F1B33" style={{ marginRight: 6 }} />
-            <Text style={styles.calendarPillText}>
-              {INDONESIAN_MONTHS[selectedMonthIndex]} {selectedYear}
-            </Text>
-            <ChevronDown size={14} color="#0F1B33" style={{ marginLeft: 4 }} />
-          </TouchableOpacity>
+          <View style={styles.titleWithLiveBadge}>
+            <Text style={styles.screenTitle}>Jadwal</Text>
+            {isTodaySelected && (
+              <View style={styles.todayLiveIndicator}>
+                <View style={styles.todayLiveDot} />
+                <Text style={styles.todayLiveText}>HARI INI · {currentTime}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.topRightControls}>
+            {!isTodaySelected && (
+              <TouchableOpacity
+                style={styles.jumpTodayBtn}
+                onPress={handleResetToCurrentMonth}
+                activeOpacity={0.8}
+              >
+                <RotateCcw size={13} color="#2563EB" style={{ marginRight: 4 }} />
+                <Text style={styles.jumpTodayText}>Hari Ini</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={styles.calendarPillBtn}
+              onPress={() => setIsMonthPickerVisible(true)}
+              activeOpacity={0.8}
+              accessibilityLabel="Atur Bulan dan Tahun"
+            >
+              <Calendar size={14} color="#0F1B33" style={{ marginRight: 6 }} />
+              <Text style={styles.calendarPillText}>
+                {INDONESIAN_MONTHS[selectedMonthIndex]} {selectedYear}
+              </Text>
+              <ChevronDown size={14} color="#0F1B33" style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* 2. CALENDAR WEEK STRIP COMPONENT */}
@@ -214,6 +280,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
           <Text style={styles.sectionDateText}>
             {activeDayName}, {currentActiveDayItem.dateNum}{' '}
             {INDONESIAN_MONTHS_SHORT[selectedMonthIndex]}
+            {isTodaySelected ? ' (Hari Ini)' : ''}
           </Text>
           <View style={styles.counterBadge}>
             <Text style={styles.counterBadgeText}>
@@ -222,10 +289,12 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
           </View>
         </View>
 
-        {/* 5. MODULAR TIMETABLE LIST COMPONENT */}
+        {/* 5. MODULAR TIMETABLE LIST COMPONENT (With Live Status) */}
         <ScheduleTimetableList
           schedules={dbSchedulesForDay}
           activeDayName={activeDayName}
+          isToday={isTodaySelected}
+          currentTime={currentTime}
           onSelectSchedule={setSelectedSchedule}
           onOpenAddOptions={handleOpenAddOptions}
         />
@@ -333,17 +402,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 4,
   },
+  titleWithLiveBadge: {
+    flexDirection: 'column',
+  },
   screenTitle: {
     fontSize: 28,
     fontWeight: '800',
     color: '#0F1B33',
     letterSpacing: -0.5,
   },
+  todayLiveIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  todayLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16A34A',
+  },
+  todayLiveText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#15803D',
+    letterSpacing: 0.3,
+  },
+  topRightControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  jumpTodayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  jumpTodayText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
   calendarPillBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E3EAF4',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
   },

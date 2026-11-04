@@ -13,6 +13,7 @@ export interface CalendarDayItem {
   dayName: string;
   fullDateStr: string;
   hasDot: boolean;
+  isToday?: boolean;
 }
 
 interface CalendarWeekStripProps {
@@ -55,21 +56,40 @@ export const CalendarWeekStrip: React.FC<CalendarWeekStripProps> = ({
       >
         {days.map((dayItem) => {
           const isActive = selectedDateNum === dayItem.dateNum;
+          const isToday = !!dayItem.isToday;
           return (
             <TouchableOpacity
               key={dayItem.dateNum}
-              style={[styles.stripCard, isActive && styles.stripCardActive]}
+              style={[
+                styles.stripCard,
+                isToday && !isActive && styles.stripCardToday,
+                isActive && styles.stripCardActive,
+              ]}
               onPress={() => onSelectDay(dayItem)}
               activeOpacity={0.75}
             >
-              <Text style={[styles.stripDayName, isActive && styles.stripDayNameActive]}>
+              <Text
+                style={[
+                  styles.stripDayName,
+                  isToday && !isActive && styles.stripDayNameToday,
+                  isActive && styles.stripDayNameActive,
+                ]}
+              >
                 {dayItem.dayShort}
               </Text>
-              <Text style={[styles.stripDateNum, isActive && styles.stripDateNumActive]}>
+              <Text
+                style={[
+                  styles.stripDateNum,
+                  isToday && !isActive && styles.stripDateNumToday,
+                  isActive && styles.stripDateNumActive,
+                ]}
+              >
                 {dayItem.dateNum}
               </Text>
               {isActive ? (
                 <View style={styles.activeWhiteDot} />
+              ) : isToday ? (
+                <View style={styles.todayBlueDot} />
               ) : dayItem.hasDot ? (
                 <View style={styles.amberDot} />
               ) : (
@@ -115,10 +135,18 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 5,
   },
+  stripCardToday: {
+    borderWidth: 1.5,
+    borderColor: '#93C5FD',
+    backgroundColor: '#F0F7FF',
+  },
   stripDayName: {
     fontSize: 12,
     fontWeight: '700',
     color: '#4A5670',
+  },
+  stripDayNameToday: {
+    color: '#2563EB',
   },
   stripDayNameActive: {
     color: '#FFFFFF',
@@ -130,6 +158,9 @@ const styles = StyleSheet.create({
     color: '#0F1B33',
     marginTop: 2,
   },
+  stripDateNumToday: {
+    color: '#1D4ED8',
+  },
   stripDateNumActive: {
     color: '#FFFFFF',
   },
@@ -138,6 +169,13 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 2.5,
     backgroundColor: '#FFFFFF',
+    marginTop: 4,
+  },
+  todayBlueDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#2563EB',
     marginTop: 4,
   },
   amberDot: {

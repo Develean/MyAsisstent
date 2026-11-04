@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { BookOpen, Plus } from 'lucide-react-native';
+import { BookOpen, Plus, Radio } from 'lucide-react-native';
 import { ScheduleWithSubject } from '../scheduleSlice';
 
 export const getSubjectPalette = (name: string) => {
@@ -18,9 +18,17 @@ export const getSubjectPalette = (name: string) => {
   return { bg: '#DBEAFE', text: '#2563EB' };
 };
 
+const parseTimeToMinutes = (timeStr?: string) => {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.split(':').map((x) => parseInt(x, 10) || 0);
+  return h * 60 + m;
+};
+
 interface ScheduleTimetableListProps {
   schedules: ScheduleWithSubject[];
   activeDayName: string;
+  isToday: boolean;
+  currentTime: string; // HH:mm format
   onSelectSchedule: (schedule: ScheduleWithSubject) => void;
   onOpenAddOptions: () => void;
 }
@@ -28,9 +36,13 @@ interface ScheduleTimetableListProps {
 export const ScheduleTimetableList: React.FC<ScheduleTimetableListProps> = ({
   schedules,
   activeDayName,
+  isToday,
+  currentTime,
   onSelectSchedule,
   onOpenAddOptions,
 }) => {
+  const currentMinutes = parseTimeToMinutes(currentTime);
+
   return (
     <>
       <View style={styles.timetableContainer}>
@@ -41,10 +53,23 @@ export const ScheduleTimetableList: React.FC<ScheduleTimetableListProps> = ({
             const initial =
               sch.subject?.initial || sch.subject?.name?.charAt(0)?.toUpperCase() || 'M';
 
+            const startMins = parseTimeToMinutes(sch.startTime);
+            const endMins = parseTimeToMinutes(sch.endTime || '09:00');
+            const isOngoing = isToday && currentMinutes >= startMins && currentMinutes < endMins;
+            const isUpcoming =
+              isToday &&
+              currentMinutes < startMins &&
+              startMins - currentMinutes <= 60;
+            const isPassed = isToday && currentMinutes >= endMins;
+
             return (
               <TouchableOpacity
                 key={sch.id}
-                style={[styles.timetablerow, isLast && styles.timetablerowLast]}
+                style={[
+                  styles.timetablerow,
+                  isOngoing && styles.timetablerowOngoing,
+                  isLast && styles.timetablerowLast,
+                ]}
                 onPress={() => onSelectSchedule(sch)}
                 activeOpacity={0.7}
               >
@@ -55,15 +80,46 @@ export const ScheduleTimetableList: React.FC<ScheduleTimetableListProps> = ({
                 </View>
 
                 <View style={styles.subjectMiddleBox}>
-                  <Text style={styles.subjectNameText} numberOfLines={1}>
-                    {sch.subject?.name || 'Mata Pelajaran'}
-                  </Text>
+                  <View style={styles.subjectTitleRow}>
+                    <Text
+                      style={[
+                        styles.subjectNameText,
+                        isPassed && styles.subjectNamePassed,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {sch.subject?.name || 'Mata Pelajaran'}
+                    </Text>
+                    {isOngoing && (
+                      <View style={styles.liveBadge}>
+                        <View style={styles.livePulseDot} />
+                        <Text style={styles.liveBadgeText}>Sedang Berlangsung</Text>
+                      </View>
+                    )}
+                    {isUpcoming && (
+                      <View style={styles.upcomingBadge}>
+                        <Text style={styles.upcomingBadgeText}>
+                          Mulai {startMins - currentMinutes} mnt lagi
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
                   <Text style={styles.subjectRoomText} numberOfLines={1}>
                     {sch.subject?.room || 'Ruang Kelas'}
                   </Text>
                 </View>
 
-                <Text style={styles.subjectTimeText}>{sch.startTime}</Text>
+                <View style={styles.timeBox}>
+                  <Text
+                    style={[
+                      styles.subjectTimeText,
+                      isOngoing && styles.subjectTimeOngoing,
+                    ]}
+                  >
+                    {sch.startTime} - {sch.endTime || '09:00'}
+                  </Text>
+                </View>
               </TouchableOpacity>
             );
           })
@@ -121,10 +177,17 @@ const styles = StyleSheet.create({
   timetablerow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    height: 62,
+    gap: 12,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#EDF1F7',
+  },
+  timetablerowOngoing: {
+    backgroundColor: '#F0FDF4',
+    marginHorizontal: -8,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    borderBottomColor: '#DCFCE7',
   },
   timetablerowLast: {
     borderBottomWidth: 0,
@@ -143,21 +206,67 @@ const styles = StyleSheet.create({
   subjectMiddleBox: {
     flex: 1,
   },
+  subjectTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
   subjectNameText: {
     fontWeight: '800',
     fontSize: 15,
     color: '#0F1B33',
   },
+  subjectNamePassed: {
+    color: '#64748B',
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 4,
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16A34A',
+  },
+  liveBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#15803D',
+  },
+  upcomingBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  upcomingBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#B45309',
+  },
   subjectRoomText: {
     fontSize: 12,
     color: '#4A5670',
     fontWeight: '600',
-    marginTop: 1,
+    marginTop: 2,
+  },
+  timeBox: {
+    alignItems: 'flex-end',
   },
   subjectTimeText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#4A5670',
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  subjectTimeOngoing: {
+    color: '#15803D',
   },
   compactEmptyScheduleBox: {
     paddingVertical: 18,
