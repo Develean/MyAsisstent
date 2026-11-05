@@ -13,14 +13,28 @@ import {
 } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../../store/store';
 import { addTask } from '../../features/tasks/taskSlice';
-import { addSchedule, addSubject } from '../../features/schedule/scheduleSlice';
+import { addSchedule, addSubject, addExam } from '../../features/schedule/scheduleSlice';
 import { autoGenerateSubtasks } from '../../features/tasks/subtaskEngine';
 import { LocalDataRepository } from '../../db/repository';
 import { LocalNotificationService } from '../notifications/notificationService';
 import { generateId } from '../utils/idGenerator';
-import { getDefaultTomorrowDeadlineISO } from '../utils/dateUtils';
+import {
+  getDateOnlyString,
+  getCustomDeadlineISO,
+  formatIndonesianFullDate,
+  calculateDaysLeft,
+} from '../utils/dateUtils';
 import { triggerHaptic } from '../utils/haptics';
-import { CheckSquare, Calendar, X, Plus, Sparkles } from 'lucide-react-native';
+import {
+  CheckSquare,
+  Calendar,
+  AlertCircle,
+  X,
+  Plus,
+  Sparkles,
+  Clock,
+  BookOpen,
+} from 'lucide-react-native';
 
 interface QuickAddModalProps {
   visible: boolean;
@@ -30,16 +44,44 @@ interface QuickAddModalProps {
 export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }) => {
   const dispatch = useAppDispatch();
   const selectedDay = useAppSelector((state) => state.schedule.selectedDay);
+  const subjects = useAppSelector((state) => state.schedule.subjects);
 
-  const [mode, setMode] = useState<'task' | 'subject'>('task');
+  const [mode, setMode] = useState<'task' | 'exam' | 'subject'>('task');
+
+  // Task Form State
   const [taskTitle, setTaskTitle] = useState('');
+  const [taskSubjectId, setTaskSubjectId] = useState<number | null>(null);
   const [taskPriority, setTaskPriority] = useState<'low' | 'normal' | 'urgent'>('normal');
   const [autoBreakdown, setAutoBreakdown] = useState(true);
+  const [taskDeadlineDate, setTaskDeadlineDate] = useState(getDateOnlyString(1)); // default: besok
+  const [taskDeadlineTime, setTaskDeadlineTime] = useState('23:59');
+  const [taskActivePreset, setTaskActivePreset] = useState<number | null>(1);
 
+  // Exam Form State
+  const [examTitle, setExamTitle] = useState('');
+  const [examSubjectId, setExamSubjectId] = useState<number | null>(null);
+  const [examDate, setExamDate] = useState(getDateOnlyString(3)); // default: H-3
+  const [examActivePreset, setExamActivePreset] = useState<number | null>(3);
+
+  // Subject Form State
   const [subjectName, setSubjectName] = useState('');
   const [subjectRoom, setSubjectRoom] = useState('');
   const [startTime, setStartTime] = useState('07:30');
   const [endTime, setEndTime] = useState('09:00');
+
+  // Handlers for Task Presets
+  const handleSelectTaskPreset = (daysOffset: number) => {
+    triggerHaptic('selection');
+    setTaskActivePreset(daysOffset);
+    setTaskDeadlineDate(getDateOnlyString(daysOffset));
+  };
+
+  // Handlers for Exam Presets
+  const handleSelectExamPreset = (daysOffset: number) => {
+    triggerHaptic('selection');
+    setExamActivePreset(daysOffset);
+    setExamDate(getDateOnlyString(daysOffset));
+  };
 
   const handleSave = () => {
     if (mode === 'task') {
@@ -55,7 +97,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
         orderIdx: g.orderIdx,
       }));
 
-      const deadlineISO = getDefaultTomorrowDeadlineISO();
+      // Construct deadline ISO
+      const [h, m] = taskDeadlineTime.split(':').map((x) => parseInt(x, 10) || 0);
+      const deadlineISO = `${taskDeadlineDate}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000Z`;
+
       const newTask = {
         id: taskId,
         title: taskTitle.trim(),
@@ -64,13 +109,13 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
         deadlineDate: deadlineISO,
         createdAt: new Date().toISOString(),
         subtasks: subtasks,
-        subjectId: null,
+        subjectId: taskSubjectId,
       };
 
       dispatch(addTask(newTask));
       LocalDataRepository.saveTask(newTask);
 
-      // Schedule deadline notification for tomorrow using ISO string
+      // Schedule deadline notification reminder
       LocalNotificationService.scheduleTaskDeadlineReminder(
         taskId,
         newTask.title,
@@ -78,6 +123,34 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
       );
 
       setTaskTitle('');
+    } else if (mode === 'exam') {
+      if (!examTitle.trim() || !examDate.trim()) return;
+      triggerHaptic('success');
+
+      const calculatedDays = Math.max(0, calculateDaysLeft(examDate));
+      const chosenSubject = subjects.find((s) => s.id === examSubjectId);
+
+      const newExam = {
+        id: generateId(),
+        title: examTitle.trim(),
+        subjectId: examSubjectId,
+        examDate: examDate.trim(),
+        daysLeft: calculatedDays,
+        subject: chosenSubject,
+      };
+
+      dispatch(addExam(newExam));
+      LocalDataRepository.saveExam(newExam);
+
+      // Schedule notification reminder for exam
+      LocalNotificationService.scheduleExamReminder(
+        newExam.id,
+        newExam.title,
+        examDate.trim(),
+        calculatedDays
+      );
+
+      setExamTitle('');
     } else {
       if (!subjectName.trim()) return;
       triggerHaptic('success');
@@ -110,6 +183,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
     onClose();
   };
 
+  const examDaysLeft = calculateDaysLeft(examDate);
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
@@ -131,42 +206,55 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                 </TouchableOpacity>
               </View>
 
+              {/* 3 Distinctive Mode Tabs: Tugas vs Ujian vs Mapel */}
+              <View style={styles.modeTabs}>
+                <TouchableOpacity
+                  style={[styles.modeTab, mode === 'task' && styles.modeTabTaskActive]}
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setMode('task');
+                  }}
+                >
+                  <CheckSquare size={13} color={mode === 'task' ? '#FFFFFF' : '#475569'} />
+                  <Text style={[styles.modeTabText, mode === 'task' && styles.modeTabTextActive]}>
+                    Tugas Sekolah
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modeTab, mode === 'exam' && styles.modeTabExamActive]}
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setMode('exam');
+                  }}
+                >
+                  <AlertCircle size={13} color={mode === 'exam' ? '#FFFFFF' : '#DC2626'} />
+                  <Text style={[styles.modeTabText, mode === 'exam' && styles.modeTabTextActive]}>
+                    Jadwal Ujian
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modeTab, mode === 'subject' && styles.modeTabSubjectActive]}
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setMode('subject');
+                  }}
+                >
+                  <Calendar size={13} color={mode === 'subject' ? '#FFFFFF' : '#475569'} />
+                  <Text style={[styles.modeTabText, mode === 'subject' && styles.modeTabTextActive]}>
+                    Jadwal Mapel
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               <ScrollView
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 style={styles.scrollableForm}
               >
-                {/* Toggle Mode */}
-                <View style={styles.modeTabs}>
-                  <TouchableOpacity
-                    style={[styles.modeTab, mode === 'task' && styles.modeTabActive]}
-                    onPress={() => {
-                      triggerHaptic('selection');
-                      setMode('task');
-                    }}
-                  >
-                    <CheckSquare size={14} color={mode === 'task' ? '#FFFFFF' : '#64748B'} />
-                    <Text style={[styles.modeTabText, mode === 'task' && styles.modeTabTextActive]}>
-                      Tugas Sekolah
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.modeTab, mode === 'subject' && styles.modeTabActive]}
-                    onPress={() => {
-                      triggerHaptic('selection');
-                      setMode('subject');
-                    }}
-                  >
-                    <Calendar size={14} color={mode === 'subject' ? '#FFFFFF' : '#64748B'} />
-                    <Text style={[styles.modeTabText, mode === 'subject' && styles.modeTabTextActive]}>
-                      Mata Pelajaran
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Form Body */}
-                {mode === 'task' ? (
+                {/* 1. FORM TUGAS SEKOLAH */}
+                {mode === 'task' && (
                   <View style={styles.formContainer}>
                     <Text style={styles.label}>Judul Tugas / PR</Text>
                     <TextInput
@@ -178,11 +266,101 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                       autoFocus
                     />
 
+                    {/* Subject Chip Selector */}
+                    {subjects.length > 0 && (
+                      <>
+                        <Text style={[styles.label, { marginTop: 12 }]}>Mata Pelajaran (Opsional)</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                          {subjects.map((sub) => {
+                            const isSelected = taskSubjectId === sub.id;
+                            return (
+                              <TouchableOpacity
+                                key={sub.id}
+                                style={[styles.subChip, isSelected && styles.subChipActive]}
+                                onPress={() => {
+                                  triggerHaptic('selection');
+                                  setTaskSubjectId(isSelected ? null : sub.id);
+                                }}
+                              >
+                                <Text style={[styles.subChipText, isSelected && styles.subChipTextActive]}>
+                                  {sub.name}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      </>
+                    )}
+
+                    {/* FORM INPUT DEADLINE TUGAS */}
+                    <Text style={[styles.label, { marginTop: 12 }]}>Batas Waktu Pengumpulan (Deadline)</Text>
+                    <View style={styles.presetRow}>
+                      {[
+                        { label: 'Hari Ini', offset: 0 },
+                        { label: 'Besok', offset: 1 },
+                        { label: 'Lusa', offset: 2 },
+                        { label: '1 Minggu', offset: 7 },
+                      ].map((p) => {
+                        const isSelected = taskActivePreset === p.offset;
+                        return (
+                          <TouchableOpacity
+                            key={p.offset}
+                            style={[styles.presetBtn, isSelected && styles.presetBtnActive]}
+                            onPress={() => handleSelectTaskPreset(p.offset)}
+                          >
+                            <Text style={[styles.presetBtnText, isSelected && styles.presetBtnTextActive]}>
+                              {p.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    {/* Date & Time Row */}
+                    <View style={styles.dateTimeRow}>
+                      <View style={{ flex: 1.6 }}>
+                        <View style={styles.inputWithIcon}>
+                          <Calendar size={15} color="#2563EB" style={{ marginRight: 6 }} />
+                          <TextInput
+                            style={styles.inlineInput}
+                            placeholder="YYYY-MM-DD"
+                            placeholderTextColor="#94A3B8"
+                            value={taskDeadlineDate}
+                            onChangeText={(val) => {
+                              setTaskDeadlineDate(val);
+                              setTaskActivePreset(null);
+                            }}
+                          />
+                        </View>
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 8 }}>
+                        <View style={styles.inputWithIcon}>
+                          <Clock size={15} color="#2563EB" style={{ marginRight: 6 }} />
+                          <TextInput
+                            style={styles.inlineInput}
+                            placeholder="23:59"
+                            placeholderTextColor="#94A3B8"
+                            value={taskDeadlineTime}
+                            onChangeText={setTaskDeadlineTime}
+                          />
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Live Deadline Preview */}
+                    <View style={styles.deadlinePreviewBox}>
+                      <Clock size={13} color="#2563EB" style={{ marginRight: 6 }} />
+                      <Text style={styles.deadlinePreviewText}>
+                        Tenggat: {formatIndonesianFullDate(taskDeadlineDate)} · Pukul {taskDeadlineTime}
+                      </Text>
+                    </View>
+
+                    {/* Priority Selector */}
                     <Text style={[styles.label, { marginTop: 12 }]}>Tingkat Prioritas</Text>
                     <View style={styles.priorityRow}>
                       {(['low', 'normal', 'urgent'] as const).map((p) => {
                         const isActive = taskPriority === p;
-                        const label = p === 'urgent' ? 'Penting / Ujian' : p === 'normal' ? 'Normal' : 'Santai';
+                        const label = p === 'urgent' ? 'Penting' : p === 'normal' ? 'Normal' : 'Santai';
                         return (
                           <TouchableOpacity
                             key={p}
@@ -223,7 +401,110 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                       </View>
                     </TouchableOpacity>
                   </View>
-                ) : (
+                )}
+
+                {/* 2. FORM JADWAL UJIAN (UJIAN / PTS / PAS) */}
+                {mode === 'exam' && (
+                  <View style={styles.formContainer}>
+                    <View style={styles.examBannerNotice}>
+                      <AlertCircle size={15} color="#DC2626" style={{ marginRight: 6 }} />
+                      <Text style={styles.examBannerNoticeText}>
+                        Jadwal Ujian adalah target evaluasi berkala dengan hitung mundur H-X dan pengingat khusus.
+                      </Text>
+                    </View>
+
+                    <Text style={styles.label}>Nama Ujian / Penilaian</Text>
+                    <TextInput
+                      style={[styles.input, { borderColor: '#FECACA' }]}
+                      placeholder="Contoh: PTS Matematika Wajib"
+                      placeholderTextColor="#94A3B8"
+                      value={examTitle}
+                      onChangeText={setExamTitle}
+                      autoFocus
+                    />
+
+                    {/* Subject Chip Selector */}
+                    {subjects.length > 0 && (
+                      <>
+                        <Text style={[styles.label, { marginTop: 12 }]}>Mata Pelajaran Terkait</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                          {subjects.map((sub) => {
+                            const isSelected = examSubjectId === sub.id;
+                            return (
+                              <TouchableOpacity
+                                key={sub.id}
+                                style={[styles.subChip, isSelected && styles.subChipExamActive]}
+                                onPress={() => {
+                                  triggerHaptic('selection');
+                                  setExamSubjectId(isSelected ? null : sub.id);
+                                }}
+                              >
+                                <Text style={[styles.subChipText, isSelected && styles.subChipExamTextActive]}>
+                                  {sub.name}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      </>
+                    )}
+
+                    {/* FORM INPUT DEADLINE / TANGGAL UJIAN */}
+                    <Text style={[styles.label, { marginTop: 12 }]}>
+                      Tanggal Pelaksanaan Ujian (Batas Waktu)
+                    </Text>
+                    <View style={styles.presetRow}>
+                      {[
+                        { label: 'Besok (H-1)', days: 1 },
+                        { label: '3 Hari (H-3)', days: 3 },
+                        { label: '1 Minggu (H-7)', days: 7 },
+                        { label: '2 Minggu (H-14)', days: 14 },
+                      ].map((p) => {
+                        const isSelected = examActivePreset === p.days;
+                        return (
+                          <TouchableOpacity
+                            key={p.days}
+                            style={[styles.presetBtn, isSelected && styles.presetBtnExamActive]}
+                            onPress={() => handleSelectExamPreset(p.days)}
+                          >
+                            <Text style={[styles.presetBtnText, isSelected && styles.presetBtnExamTextActive]}>
+                              {p.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    <View style={styles.inputWithIcon}>
+                      <Calendar size={15} color="#DC2626" style={{ marginRight: 6 }} />
+                      <TextInput
+                        style={styles.inlineInput}
+                        placeholder="YYYY-MM-DD (Contoh: 2026-11-15)"
+                        placeholderTextColor="#94A3B8"
+                        value={examDate}
+                        onChangeText={(val) => {
+                          setExamDate(val);
+                          setExamActivePreset(null);
+                        }}
+                      />
+                    </View>
+
+                    {/* Exam Date & Countdown Preview */}
+                    <View style={styles.examPreviewCard}>
+                      <Text style={styles.examPreviewDate}>
+                        {formatIndonesianFullDate(examDate)}
+                      </Text>
+                      <View style={styles.examCountdownTag}>
+                        <Text style={styles.examCountdownTagText}>
+                          {examDaysLeft <= 0 ? 'Hari Ini!' : `H-${examDaysLeft} (${examDaysLeft} hari lagi)`}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* 3. FORM JADWAL MATA PELAJARAN */}
+                {mode === 'subject' && (
                   <View style={styles.formContainer}>
                     <Text style={styles.label}>Nama Mata Pelajaran</Text>
                     <TextInput
@@ -270,10 +551,19 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                 )}
               </ScrollView>
 
-              {/* Save Button */}
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+              {/* Submit CTA */}
+              <TouchableOpacity
+                style={[
+                  styles.saveBtn,
+                  mode === 'exam' && { backgroundColor: '#DC2626', shadowColor: '#DC2626' },
+                ]}
+                onPress={handleSave}
+                activeOpacity={0.85}
+              >
                 <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
-                <Text style={styles.saveBtnText}>Simpan {mode === 'task' ? 'Tugas' : 'Mapel'}</Text>
+                <Text style={styles.saveBtnText}>
+                  Simpan {mode === 'task' ? 'Tugas' : mode === 'exam' ? 'Jadwal Ujian' : 'Mapel'}
+                </Text>
               </TouchableOpacity>
             </KeyboardAvoidingView>
           </TouchableWithoutFeedback>
@@ -295,10 +585,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     padding: 20,
     paddingBottom: Platform.OS === 'ios' ? 36 : 24,
-    maxHeight: '88%',
+    maxHeight: '90%',
   },
   scrollableForm: {
-    maxHeight: 420,
+    maxHeight: 460,
   },
   header: {
     flexDirection: 'row',
@@ -331,18 +621,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 9,
     borderRadius: 10,
-    gap: 6,
+    gap: 5,
   },
-  modeTabActive: {
+  modeTabTaskActive: {
     backgroundColor: '#2563EB',
   },
+  modeTabExamActive: {
+    backgroundColor: '#DC2626',
+  },
+  modeTabSubjectActive: {
+    backgroundColor: '#0F1B33',
+  },
   modeTabText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#475569',
   },
   modeTabTextActive: {
     color: '#FFFFFF',
+    fontWeight: '800',
   },
   formContainer: {
     marginBottom: 16,
@@ -350,92 +647,246 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#475569',
+    color: '#4A5670',
     marginBottom: 6,
   },
   input: {
     backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
     color: '#0F1B33',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  subChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  subChipActive: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  subChipExamActive: {
+    backgroundColor: '#DC2626',
+    borderColor: '#DC2626',
+  },
+  subChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4A5670',
+  },
+  subChipTextActive: {
+    color: '#FFFFFF',
+  },
+  subChipExamTextActive: {
+    color: '#FFFFFF',
+  },
+  presetRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  presetBtn: {
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 9,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  presetBtnActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#93C5FD',
+  },
+  presetBtnExamActive: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FCA5A5',
+  },
+  presetBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  presetBtnTextActive: {
+    color: '#2563EB',
+    fontWeight: '800',
+  },
+  presetBtnExamTextActive: {
+    color: '#DC2626',
+    fontWeight: '800',
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 10,
+    height: 42,
+  },
+  inlineInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0F1B33',
+    fontWeight: '600',
+  },
+  deadlinePreviewBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    marginBottom: 8,
+  },
+  deadlinePreviewText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1E40AF',
+    flex: 1,
+  },
+  examBannerNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 12,
+  },
+  examBannerNoticeText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#991B1B',
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  examPreviewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginTop: 8,
+  },
+  examPreviewDate: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#991B1B',
+    flex: 1,
+  },
+  examCountdownTag: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  examCountdownTagText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
   },
   priorityRow: {
     flexDirection: 'row',
     gap: 8,
+    marginBottom: 14,
   },
   priorityBtn: {
     flex: 1,
     paddingVertical: 8,
+    alignItems: 'center',
     borderRadius: 10,
-    backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
   },
   priorityBtnActive: {
     backgroundColor: '#EFF6FF',
     borderColor: '#2563EB',
   },
   priorityBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     color: '#64748B',
   },
   priorityBtnTextActive: {
     color: '#2563EB',
+    fontWeight: '800',
   },
   breakdownToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
     padding: 12,
-    marginTop: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   checkbox: {
-    width: 22,
-    height: 22,
+    width: 20,
+    height: 20,
     borderRadius: 6,
-    borderWidth: 1.8,
-    borderColor: '#2563EB',
-    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#94A3B8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxActive: {
     backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
   },
   breakdownTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
-    color: '#1E40AF',
+    color: '#0F1B33',
   },
   breakdownDesc: {
     fontSize: 11,
-    color: '#3B82F6',
+    color: '#64748B',
     marginTop: 1,
   },
   rowInputs: {
     flexDirection: 'row',
+    alignItems: 'center',
   },
   saveBtn: {
+    backgroundColor: '#2563EB',
+    height: 48,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563EB',
-    paddingVertical: 13,
-    borderRadius: 14,
-    gap: 6,
+    gap: 8,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   saveBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
     color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

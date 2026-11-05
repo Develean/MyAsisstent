@@ -27,7 +27,9 @@ import {
   Plus,
   Clock,
   RotateCcw,
+  AlertCircle,
 } from 'lucide-react-native';
+import { formatIndonesianFullDate } from '../../shared/utils/dateUtils';
 
 const INDONESIAN_MONTHS_SHORT = [
   'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
@@ -259,7 +261,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
           selectedYear={selectedYear}
         />
 
-        {/* 3. EXAM ALERT CARD */}
+        {/* 3. EXAM ALERT CARD (Distinct High-Stakes Exam Milestone) */}
         {nearestExam && (
           <TouchableOpacity
             style={styles.examAlertCard}
@@ -267,12 +269,24 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
             activeOpacity={0.85}
           >
             <View style={styles.examAlertLeft}>
-              <Text style={styles.examAlertTag}>Ujian</Text>
-              <Text style={styles.examAlertTitle}>
-                {nearestExam.title}, {nearestExam.daysLeft} hari lagi
+              <View style={styles.examAlertTagRow}>
+                <AlertCircle size={13} color="#DC2626" style={{ marginRight: 4 }} />
+                <Text style={styles.examAlertTag}>JADWAL UJIAN</Text>
+              </View>
+              <Text style={styles.examAlertTitle} numberOfLines={1}>
+                {nearestExam.subject?.name
+                  ? `${nearestExam.subject.name} - ${nearestExam.title}`
+                  : nearestExam.title}
+              </Text>
+              <Text style={styles.examAlertSubDate}>
+                {formatIndonesianFullDate(nearestExam.examDate)}
               </Text>
             </View>
-            <Text style={styles.examAlertCountdown}>H-{nearestExam.daysLeft}</Text>
+            <View style={styles.examCountdownPill}>
+              <Text style={styles.examAlertCountdown}>
+                {nearestExam.daysLeft > 0 ? `H-${nearestExam.daysLeft}` : 'Hari Ini!'}
+              </Text>
+            </View>
           </TouchableOpacity>
         )}
 
@@ -466,39 +480,57 @@ const styles = StyleSheet.create({
   examAlertCard: {
     marginTop: 16,
     backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#2563EB',
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
     borderRadius: 20,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#2563EB',
+    shadowColor: '#DC2626',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   },
   examAlertLeft: {
     flex: 1,
+    marginRight: 10,
+  },
+  examAlertTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
   },
   examAlertTag: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#B45309',
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#DC2626',
+    letterSpacing: 0.4,
   },
   examAlertTitle: {
     fontSize: 15,
     fontWeight: '800',
     color: '#0F1B33',
-    marginTop: 3,
+    marginTop: 2,
+  },
+  examAlertSubDate: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400E',
+    marginTop: 2,
+  },
+  examCountdownPill: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
   examAlertCountdown: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#2563EB',
-    marginLeft: 8,
+    color: '#FFFFFF',
   },
   sectionHeaderRow: {
     marginTop: 18,

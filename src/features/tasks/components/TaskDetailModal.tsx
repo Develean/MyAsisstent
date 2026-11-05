@@ -16,6 +16,7 @@ import {
   TaskWithSubtasks,
   toggleSubtaskCompletion,
   toggleTaskCompletion,
+  updateTask,
   addSubtask,
   setTaskSubtasks,
   deleteSubtask,
@@ -26,6 +27,7 @@ import { autoGenerateSubtasks } from '../subtaskEngine';
 import { setActiveTask } from '../../focus/focusSlice';
 import { addExp, recordDailyActivity } from '../../user/userSlice';
 import { LocalDataRepository } from '../../../db/repository';
+import { LocalNotificationService } from '../../../shared/notifications/notificationService';
 import {
   X,
   Plus,
@@ -33,12 +35,14 @@ import {
   Sparkles,
   Clock,
   Play,
+  Calendar,
 } from 'lucide-react-native';
 import { AnimatedCheckbox } from '../../../shared/components/AnimatedCheckbox';
 import { ActionFeedbackToast, ToastType } from '../../../shared/components/ActionFeedbackToast';
-import { formatDeadlineDisplay } from '../../../shared/utils/dateUtils';
+import { formatDeadlineDisplay, getCustomDeadlineISO } from '../../../shared/utils/dateUtils';
 import { generateId } from '../../../shared/utils/idGenerator';
 import { triggerHaptic } from '../../../shared/utils/haptics';
+import { Alert } from 'react-native';
 
 interface TaskDetailModalProps {
   task: TaskWithSubtasks | null;
@@ -170,6 +174,50 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     if (onStartFocus) onStartFocus(task.id);
   };
 
+  const handleChangeDeadline = () => {
+    Alert.alert(
+      'Ubah Tenggat Waktu',
+      'Pilih batas waktu baru untuk tugas ini:',
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Hari Ini (23:59)',
+          onPress: () => applyNewDeadline(0),
+        },
+        {
+          text: 'Besok (23:59)',
+          onPress: () => applyNewDeadline(1),
+        },
+        {
+          text: '3 Hari Lagi',
+          onPress: () => applyNewDeadline(3),
+        },
+        {
+          text: '1 Minggu Lagi',
+          onPress: () => applyNewDeadline(7),
+        },
+      ]
+    );
+  };
+
+  const applyNewDeadline = (daysOffset: number) => {
+    triggerHaptic('selection');
+    const newDeadlineISO = getCustomDeadlineISO(daysOffset, 23, 59);
+    const updated = {
+      ...task,
+      deadlineDate: newDeadlineISO,
+    };
+    dispatch(updateTask(updated));
+    LocalDataRepository.saveTask(updated);
+
+    LocalNotificationService.scheduleTaskDeadlineReminder(
+      task.id,
+      task.title,
+      newDeadlineISO
+    );
+    showToast('Tenggat Diperbarui', `Batas waktu diubah ke ${formatDeadlineDisplay(newDeadlineISO)}`, 'info');
+  };
+
   const handleDelete = () => {
     dispatch(deleteTask(task.id));
     LocalDataRepository.deleteTask(task.id);
@@ -204,10 +252,18 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     </Text>
                   </View>
                   {task.deadlineDate ? (
-                    <View style={styles.deadlineContainer}>
-                      <Clock size={12} color="#EF4444" />
-                      <Text style={styles.deadlineText}>{formatDeadlineDisplay(task.deadlineDate)}</Text>
-                    </View>
+                    <TouchableOpacity
+                      style={styles.deadlineContainer}
+                      onPress={handleChangeDeadline}
+                      activeOpacity={0.75}
+                      accessibilityLabel="Ubah tenggat waktu"
+                    >
+                      <Clock size={12} color="#2563EB" />
+                      <Text style={styles.deadlineText}>
+                        Tenggat: {formatDeadlineDisplay(task.deadlineDate)}
+                      </Text>
+                      <Text style={styles.deadlineChangeHint}>Ubah</Text>
+                    </TouchableOpacity>
                   ) : null}
                 </View>
                 <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -383,12 +439,25 @@ const styles = StyleSheet.create({
   deadlineContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   deadlineText: {
     fontSize: 11,
-    color: '#EF4444',
-    fontWeight: '600',
+    color: '#1D4ED8',
+    fontWeight: '700',
+  },
+  deadlineChangeHint: {
+    fontSize: 10,
+    color: '#2563EB',
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+    marginLeft: 2,
   },
   closeBtn: {
     padding: 6,

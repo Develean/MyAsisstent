@@ -30,9 +30,11 @@ import {
   Plus,
   Sparkles,
   BookOpen,
+  AlertCircle,
+  Clock,
 } from 'lucide-react-native';
 import { ActionFeedbackToast, ToastType } from '../../shared/components/ActionFeedbackToast';
-import { formatDeadlineDisplay } from '../../shared/utils/dateUtils';
+import { formatDeadlineDisplay, formatIndonesianFullDate } from '../../shared/utils/dateUtils';
 import { triggerHaptic } from '../../shared/utils/haptics';
 import { NotesModal } from '../notes/components/NotesModal';
 
@@ -168,25 +170,37 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
         </View>
 
         {/* =========================================================
-            3. HERO CARD: Hitung Mundur Ujian & Maskot Hamster
+            3. HERO CARD: Hitung Mundur Ujian & Maskot Hamster (Distinct High-Stakes Exam)
             ========================================================= */}
         {nearestExam ? (
           <View style={styles.examHeroCard}>
             <View style={styles.examHeroLeft}>
-              <Text style={styles.examTag}>Hitung mundur ujian</Text>
+              <View style={styles.examTagRow}>
+                <AlertCircle size={13} color="#DC2626" style={{ marginRight: 4 }} />
+                <Text style={styles.examTag}>JADWAL UJIAN</Text>
+                <View style={styles.countdownPillSmall}>
+                  <Text style={styles.countdownPillSmallText}>
+                    {nearestExam.daysLeft > 0 ? `H-${nearestExam.daysLeft}` : 'Hari Ini!'}
+                  </Text>
+                </View>
+              </View>
               <Text style={styles.examTitle} numberOfLines={2}>
                 {nearestExam.subject?.name
                   ? `${nearestExam.subject.name} - ${nearestExam.title}`
                   : nearestExam.title}
-                {'\n'}
-                {nearestExam.daysLeft > 0 ? `${nearestExam.daysLeft} hari lagi` : 'Hari ini!'}
               </Text>
+              <View style={styles.examDateMetaRow}>
+                <Calendar size={12} color="#B45309" style={{ marginRight: 4 }} />
+                <Text style={styles.examDateMetaText}>
+                  {formatIndonesianFullDate(nearestExam.examDate)}
+                </Text>
+              </View>
               <TouchableOpacity
                 style={styles.reviewBtn}
                 onPress={() => onNavigateTab && onNavigateTab('Fokus')}
                 activeOpacity={0.85}
               >
-                <Text style={styles.reviewBtnText}>Review materi</Text>
+                <Text style={styles.reviewBtnText}>Review Materi Ujian</Text>
               </TouchableOpacity>
             </View>
 
@@ -304,8 +318,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
                     style={{ flex: 1 }}
                     onPress={() => setSelectedTask(t)}
                   >
-                    <Text style={styles.taskTitleText} numberOfLines={1}>{t.title}</Text>
-                    <Text style={styles.taskDeadlineText}>{formatDeadlineDisplay(t.deadlineDate)}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.taskTitleText} numberOfLines={1}>{t.title}</Text>
+                      {t.priority === 'urgent' && (
+                        <View style={styles.urgentPriorityTag}>
+                          <Text style={styles.urgentPriorityText}>Penting</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 4 }}>
+                      <Clock size={11} color="#64748B" />
+                      <Text style={styles.taskDeadlineText}>Tenggat: {formatDeadlineDisplay(t.deadlineDate)}</Text>
+                    </View>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -460,38 +484,68 @@ const styles = StyleSheet.create({
   examHeroCard: {
     marginTop: 16,
     backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
     borderRadius: 20,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 112,
-    shadowColor: '#0F1B33',
+    minHeight: 116,
+    shadowColor: '#DC2626',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 3,
   },
   examHeroLeft: {
     flex: 1,
   },
+  examTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
   examTag: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#B45309',
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#DC2626',
+    letterSpacing: 0.4,
+  },
+  countdownPillSmall: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  countdownPillSmallText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
   },
   examTitle: {
-    marginTop: 4,
-    fontSize: 17,
+    marginTop: 2,
+    fontSize: 16,
     fontWeight: '800',
-    lineHeight: 22,
+    lineHeight: 21,
     color: '#0F1B33',
+  },
+  examDateMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  examDateMetaText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400E',
   },
   reviewBtn: {
     marginTop: 10,
-    height: 36,
-    paddingHorizontal: 16,
+    height: 34,
+    paddingHorizontal: 14,
     borderRadius: 999,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#DC2626',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',
@@ -499,7 +553,7 @@ const styles = StyleSheet.create({
   reviewBtnText: {
     color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 12,
   },
   heroMascotImg: {
     width: 105,
@@ -594,6 +648,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
     color: '#0F1B33',
+  },
+  urgentPriorityTag: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  urgentPriorityText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#DC2626',
   },
   taskDeadlineText: {
     fontSize: 12,
