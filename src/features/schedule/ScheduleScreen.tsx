@@ -16,6 +16,7 @@ import { setSelectedDay, setSelectedDate, ScheduleWithSubject, ExamWithSubject }
 import { SubjectDetailModal } from './components/SubjectDetailModal';
 import { AddExamModal } from './components/AddExamModal';
 import { ExamDetailModal } from './components/ExamDetailModal';
+import { AddScheduleOptionsModal } from './components/AddScheduleOptionsModal';
 import { NotesModal } from '../notes/components/NotesModal';
 import { MonthPickerModal, INDONESIAN_MONTHS } from './components/MonthPickerModal';
 import { CalendarWeekStrip, CalendarDayItem } from './components/CalendarWeekStrip';
@@ -70,6 +71,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
   const [selectedExam, setSelectedExam] = useState<ExamWithSubject | null>(null);
   const [isExamModalVisible, setIsExamModalVisible] = useState(false);
   const [isNotesModalVisible, setIsNotesModalVisible] = useState(false);
+  const [isAddOptionsModalVisible, setIsAddOptionsModalVisible] = useState(false);
 
   // Real-time clock tick (every 30 seconds)
   useEffect(() => {
@@ -161,27 +163,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
   }, [activeDayName, currentActiveDayItem.fullDateStr, dispatch]);
 
   const handleOpenAddOptions = () => {
-    Alert.alert(
-      'Tambah Baru',
-      'Pilih item yang ingin Anda tambahkan ke jadwal:',
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Jadwal Mata Pelajaran',
-          onPress: () => {
-            if (onOpenAddSubjectModal) onOpenAddSubjectModal();
-          },
-        },
-        {
-          text: 'Jadwal Ujian / PTS / PAS',
-          onPress: () => setIsExamModalVisible(true),
-        },
-        {
-          text: 'Catatan Pelajaran',
-          onPress: () => setIsNotesModalVisible(true),
-        },
-      ]
-    );
+    setIsAddOptionsModalVisible(true);
   };
 
   const handleDaySelect = (dayItem: CalendarDayItem) => {
@@ -410,6 +392,17 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
       <AddExamModal
         visible={isExamModalVisible}
         onClose={() => setIsExamModalVisible(false)}
+      />
+
+      {/* Add Schedule Options Bottom Modal */}
+      <AddScheduleOptionsModal
+        visible={isAddOptionsModalVisible}
+        onClose={() => setIsAddOptionsModalVisible(false)}
+        onSelectAddSubject={() => {
+          if (onOpenAddSubjectModal) onOpenAddSubjectModal();
+        }}
+        onSelectAddExam={() => setIsExamModalVisible(true)}
+        onSelectAddNote={() => setIsNotesModalVisible(true)}
       />
 
       {/* Notes Modal */}

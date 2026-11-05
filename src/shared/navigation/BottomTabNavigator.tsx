@@ -23,7 +23,7 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 const DummyAddScreen = () => <View style={{ flex: 1, backgroundColor: '#F8FAFC' }} />;
 
 interface BottomTabNavigatorProps {
-  onOpenAddModal: () => void;
+  onOpenAddModal: (mode?: 'task' | 'exam' | 'subject') => void;
 }
 
 export const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ onOpenAddModal }) => {
@@ -71,7 +71,12 @@ export const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ onOpenAd
           tabBarIcon: ({ color, size }) => <Calendar color={color} size={22} />,
         }}
       >
-        {(props) => <ScheduleScreen {...props} onOpenAddSubjectModal={onOpenAddModal} />}
+        {(props) => (
+          <ScheduleScreen
+            {...props}
+            onOpenAddSubjectModal={() => onOpenAddModal('subject')}
+          />
+        )}
       </Tab.Screen>
 
       {/* Floating Center Add Button */}

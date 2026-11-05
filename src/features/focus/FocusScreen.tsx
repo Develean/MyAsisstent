@@ -229,34 +229,12 @@ export const FocusScreen: React.FC = () => {
   };
 
   const handleResetTimer = async () => {
-    const totalSecs = (focus.durationMinutes || 25) * 60;
-    const isElapsed = focus.isRunning || focus.remainingSeconds !== totalSecs;
-
-    if (isElapsed) {
-      Alert.alert(
-        'Reset Waktu Fokus?',
-        'Sesi fokus yang sedang berjalan akan diulang kembali dari awal.',
-        [
-          { text: 'Batal', style: 'cancel' },
-          {
-            text: 'Reset',
-            style: 'destructive',
-            onPress: async () => {
-              triggerHaptic('medium');
-              dispatch(resetTimer());
-              if (focusNotificationIdRef.current) {
-                await LocalNotificationService.cancelNotification(focusNotificationIdRef.current);
-                focusNotificationIdRef.current = null;
-              }
-              showToast('Timer Direset', `Waktu dikembalikan ke ${focus.durationMinutes || 25} menit`, 'info');
-            },
-          },
-        ]
-      );
-      return;
-    }
-
+    triggerHaptic('medium');
     dispatch(resetTimer());
+    if (focusNotificationIdRef.current) {
+      await LocalNotificationService.cancelNotification(focusNotificationIdRef.current);
+      focusNotificationIdRef.current = null;
+    }
     showToast('Timer Direset', `Waktu dikembalikan ke ${focus.durationMinutes || 25} menit`, 'info');
   };
 

@@ -42,14 +42,26 @@ import {
 interface QuickAddModalProps {
   visible: boolean;
   onClose: () => void;
+  initialMode?: 'task' | 'exam' | 'subject';
 }
 
-export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }) => {
+export const QuickAddModal: React.FC<QuickAddModalProps> = ({
+  visible,
+  onClose,
+  initialMode = 'task',
+}) => {
   const dispatch = useAppDispatch();
   const selectedDay = useAppSelector((state) => state.schedule.selectedDay);
   const subjects = useAppSelector((state) => state.schedule.subjects);
 
-  const [mode, setMode] = useState<'task' | 'exam' | 'subject'>('task');
+  const [mode, setMode] = useState<'task' | 'exam' | 'subject'>(initialMode);
+
+  // Sync mode with initialMode when modal becomes visible
+  React.useEffect(() => {
+    if (visible && initialMode) {
+      setMode(initialMode);
+    }
+  }, [visible, initialMode]);
 
   // Task Form State
   const [taskTitle, setTaskTitle] = useState('');

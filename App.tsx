@@ -27,6 +27,7 @@ const MainAppContent: React.FC = () => {
     (state) => state.focus.sessionCompletedPendingReward
   );
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [modalInitialMode, setModalInitialMode] = useState<'task' | 'exam' | 'subject'>('task');
 
   // Global handler for background focus session completion reward
   useEffect(() => {
@@ -82,11 +83,17 @@ const MainAppContent: React.FC = () => {
     return <OnboardingScreen />;
   }
 
+  const handleOpenAdd = (mode: 'task' | 'exam' | 'subject' = 'task') => {
+    setModalInitialMode(mode);
+    setIsModalVisible(true);
+  };
+
   return (
     <NavigationContainer>
-      <BottomTabNavigator onOpenAddModal={() => setIsModalVisible(true)} />
+      <BottomTabNavigator onOpenAddModal={handleOpenAdd} />
       <QuickAddModal
         visible={isModalVisible}
+        initialMode={modalInitialMode}
         onClose={() => setIsModalVisible(false)}
       />
     </NavigationContainer>

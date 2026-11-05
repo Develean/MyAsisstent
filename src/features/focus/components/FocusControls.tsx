@@ -4,14 +4,14 @@ import { Play, Pause, RotateCcw } from 'lucide-react-native';
 
 interface FocusControlsProps {
   isRunning: boolean;
-  canReset: boolean;
+  canReset?: boolean;
   onTogglePlay: () => void;
   onResetTimer: () => void;
 }
 
 export const FocusControls: React.FC<FocusControlsProps> = ({
   isRunning,
-  canReset,
+  canReset = true,
   onTogglePlay,
   onResetTimer,
 }) => {
@@ -38,19 +38,20 @@ export const FocusControls: React.FC<FocusControlsProps> = ({
         )}
       </TouchableOpacity>
 
-      {/* Symmetrical Right Slot: Reset Button (Visible when timer is active or elapsed) */}
+      {/* Symmetrical Right Slot: Reset Button (Always Available & Symmetrical) */}
       <View style={styles.sideSlot}>
-        {canReset ? (
-          <TouchableOpacity
-            style={styles.secondaryResetButton}
-            onPress={onResetTimer}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel="Reset waktu fokus"
-          >
-            <RotateCcw size={19} color="#4A5670" />
-          </TouchableOpacity>
-        ) : null}
+        <TouchableOpacity
+          style={[
+            styles.secondaryResetButton,
+            !canReset && styles.secondaryResetButtonIdle,
+          ]}
+          onPress={onResetTimer}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Reset waktu fokus"
+        >
+          <RotateCcw size={19} color={canReset ? '#1E293B' : '#94A3B8'} />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -102,5 +103,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
+  },
+  secondaryResetButtonIdle: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    opacity: 0.75,
   },
 });
