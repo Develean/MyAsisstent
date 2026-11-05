@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { getDateOnlyString } from '../../shared/utils/dateUtils';
 
 export interface UserState {
   name: string;
@@ -66,7 +67,7 @@ export const userSlice = createSlice({
       state.streakDays += 1;
     },
     recordDailyActivity: (state) => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getDateOnlyString();
       if (!state.lastActiveDate) {
         state.streakDays = 1;
         state.lastActiveDate = today;

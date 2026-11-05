@@ -297,17 +297,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
             <View style={styles.emptyIconCircle}>
               <Calendar size={22} color="#2563EB" />
             </View>
-            <Text style={styles.emptyTitle}>Hari ini belum ada jadwal pelajaran</Text>
+            <Text style={styles.emptyTitle}>
+              {currentDayName === 'Minggu'
+                ? 'Hari Libur Sekolah 🎉'
+                : 'Hari ini belum ada jadwal pelajaran'}
+            </Text>
             <Text style={styles.emptySubtitle}>
-              Atur jadwal kelas mingguanmu agar maskot pintar bisa mengingatkan kelas tepat waktu.
+              {currentDayName === 'Minggu'
+                ? 'Manfaatkan akhir pekan untuk istirahat, hobi, atau mencicil target tugas belajarmu dengan santai.'
+                : 'Atur jadwal kelas mingguanmu agar maskot pintar bisa mengingatkan kelas tepat waktu.'}
             </Text>
             <TouchableOpacity
               style={styles.emptyCtaButton}
-              onPress={onOpenAddModal}
+              onPress={() => onNavigateTab ? onNavigateTab('Jadwal') : onOpenAddModal && onOpenAddModal()}
               activeOpacity={0.85}
             >
               <Plus size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.emptyCtaText}>Tambah Jadwal Pelajaran</Text>
+              <Text style={styles.emptyCtaText}>
+                {currentDayName === 'Minggu' ? 'Kelola Jadwal Mingguan' : 'Tambah Jadwal Pelajaran'}
+              </Text>
             </TouchableOpacity>
           </View>
         )}

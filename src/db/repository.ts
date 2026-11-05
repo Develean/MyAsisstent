@@ -3,7 +3,7 @@ import { Subject, Schedule, Task, Subtask, Exam, Note } from './schema';
 import { TaskWithSubtasks } from '../features/tasks/taskSlice';
 import { ScheduleWithSubject, ExamWithSubject } from '../features/schedule/scheduleSlice';
 import { NoteWithSubject } from '../features/notes/noteSlice';
-import { calculateDaysLeft } from '../shared/utils/dateUtils';
+import { calculateDaysLeft, getDateOnlyString } from '../shared/utils/dateUtils';
 
 export class LocalDataRepository {
   /**
@@ -502,7 +502,7 @@ export class LocalDataRepository {
     try {
       const profile = this.loadUserProfile();
       if (!profile) return;
-      const today = new Date().toISOString().split('T')[0];
+      const today = getDateOnlyString();
       let currentExp = profile.currentExp + expGained;
       let currentLevel = profile.currentLevel;
       let maxExp = profile.maxExp;
@@ -542,6 +542,76 @@ export class LocalDataRepository {
       });
     } catch (err) {
       console.warn('Failed to record EXP and activity in SQLite:', err);
+    }
+  }
+
+  /**
+   * Transactional atomic restore for backup data
+   */
+  static restoreAllData(data: {
+    profile?: any;
+    subjects?: Subject[];
+    schedules?: ScheduleWithSubject[];
+    tasks?: TaskWithSubtasks[];
+    exams?: ExamWithSubject[];
+    notes?: NoteWithSubject[];
+  }): boolean {
+    const db = getDb();
+    try {
+      db.execSync('BEGIN TRANSACTION;');
+
+      if (data.profile && typeof data.profile.name === 'string') {
+        this.saveUserProfile(data.profile);
+      }
+
+      if (Array.isArray(data.subjects)) {
+        for (const s of data.subjects) {
+          if (s && typeof s.name === 'string') {
+            this.saveSubject(s);
+          }
+        }
+      }
+
+      if (Array.isArray(data.schedules)) {
+        for (const sch of data.schedules) {
+          if (sch && typeof sch.dayOfWeek === 'string') {
+            this.saveSchedule(sch);
+          }
+        }
+      }
+
+      if (Array.isArray(data.tasks)) {
+        for (const t of data.tasks) {
+          if (t && typeof t.title === 'string') {
+            this.saveTask(t);
+          }
+        }
+      }
+
+      if (Array.isArray(data.exams)) {
+        for (const e of data.exams) {
+          if (e && typeof e.title === 'string') {
+            this.saveExam(e);
+          }
+        }
+      }
+
+      if (Array.isArray(data.notes)) {
+        for (const n of data.notes) {
+          if (n && typeof n.content === 'string') {
+            this.saveNote(n);
+          }
+        }
+      }
+
+      db.execSync('COMMIT;');
+      return true;
+    } catch (err) {
+      try {
+        db.execSync('ROLLBACK;');
+      } catch (rbErr) {}
+      console.warn('Failed to restore data transactionally:', err);
+      return false;
     }
   }
 }

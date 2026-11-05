@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { X } from 'lucide-react-native';
 
@@ -31,35 +32,45 @@ export const CustomDurationModal: React.FC<CustomDurationModalProps> = ({
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Atur Durasi Kustom</Text>
-            <TouchableOpacity onPress={onClose}>
-              <X size={20} color="#0F1B33" />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.modalSubtitle}>
-            Tentukan berapa menit kamu ingin fokus (1 - 180 menit):
-          </Text>
-          <TextInput
-            style={styles.modalInput}
-            placeholder="Contoh: 35"
-            placeholderTextColor="#94A3B8"
-            keyboardType="number-pad"
-            value={customInputText}
-            onChangeText={onChangeCustomInputText}
-            autoFocus
-          />
-          <TouchableOpacity
-            style={styles.modalSubmitBtn}
-            onPress={onApplyCustomMinutes}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.modalSubmitText}>Pasang Durasi</Text>
-          </TouchableOpacity>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Atur Durasi Kustom</Text>
+                <TouchableOpacity
+                  onPress={onClose}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <X size={20} color="#0F1B33" />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.modalSubtitle}>
+                Tentukan berapa menit kamu ingin fokus (1 - 180 menit):
+              </Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Contoh: 35"
+                placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
+                maxLength={3}
+                returnKeyType="done"
+                onSubmitEditing={onApplyCustomMinutes}
+                value={customInputText}
+                onChangeText={onChangeCustomInputText}
+                autoFocus
+              />
+              <TouchableOpacity
+                style={styles.modalSubmitBtn}
+                onPress={onApplyCustomMinutes}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.modalSubmitText}>Pasang Durasi</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };

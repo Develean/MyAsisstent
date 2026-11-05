@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch } from '../../store/store';
 import { completeOnboarding } from '../user/userSlice';
 import { LocalDataRepository } from '../../db/repository';
+import { getDateOnlyString } from '../../shared/utils/dateUtils';
 import { Calendar, Clock, Sparkles, ArrowRight } from 'lucide-react-native';
 
 const slides = [
@@ -66,7 +67,7 @@ export const OnboardingScreen: React.FC = () => {
     const trimmedName = name.trim();
     const trimmedGrade = grade.trim();
     const trimmedSchool = school.trim();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getDateOnlyString();
 
     // Persist to local SQLite
     LocalDataRepository.saveUserProfile({

@@ -135,6 +135,7 @@ export const AddExamModal: React.FC<AddExamModalProps> = ({ visible, onClose }) 
                   placeholderTextColor="#94A3B8"
                   value={title}
                   onChangeText={setTitle}
+                  maxLength={120}
                   autoFocus
                 />
 
@@ -214,6 +215,7 @@ export const AddExamModal: React.FC<AddExamModalProps> = ({ visible, onClose }) 
                     style={styles.dateTextInput}
                     placeholder="YYYY-MM-DD (Contoh: 2026-11-15)"
                     placeholderTextColor="#94A3B8"
+                    maxLength={10}
                     value={examDate}
                     onChangeText={handleDateChange}
                   />

@@ -44,52 +44,33 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({ visible, onC
         throw new Error('Format data tidak valid.');
       }
 
-      // Restore profile
-      if (data.profile) {
-        LocalDataRepository.saveUserProfile(data.profile);
-        dispatch(setUserProfile(data.profile));
+      if (data.app !== 'MyAsisstent') {
+        throw new Error('File cadangan tidak teridentifikasi berasal dari MyAsisstent.');
       }
 
-      // Restore subjects
-      if (Array.isArray(data.subjects)) {
-        data.subjects.forEach((s: any) => LocalDataRepository.saveSubject(s));
-        dispatch(setSubjects(data.subjects));
+      const success = LocalDataRepository.restoreAllData(data);
+      if (!success) {
+        throw new Error('Gagal menulis data cadangan ke penyimpanan SQLite.');
       }
 
-      // Restore schedules
-      if (Array.isArray(data.schedules)) {
-        data.schedules.forEach((sch: any) => LocalDataRepository.saveSchedule(sch));
-        dispatch(setSchedules(data.schedules));
-      }
-
-      // Restore tasks
-      if (Array.isArray(data.tasks)) {
-        data.tasks.forEach((t: any) => LocalDataRepository.saveTask(t));
-        dispatch(setTasks(data.tasks));
-      }
-
-      // Restore exams
-      if (Array.isArray(data.exams)) {
-        data.exams.forEach((e: any) => LocalDataRepository.saveExam(e));
-        dispatch(setExams(data.exams));
-      }
-
-      // Restore notes
-      if (Array.isArray(data.notes)) {
-        data.notes.forEach((n: any) => LocalDataRepository.saveNote(n));
-        dispatch(setNotes(data.notes));
-      }
+      // Update Redux states
+      if (data.profile) dispatch(setUserProfile(data.profile));
+      if (Array.isArray(data.subjects)) dispatch(setSubjects(data.subjects));
+      if (Array.isArray(data.schedules)) dispatch(setSchedules(data.schedules));
+      if (Array.isArray(data.tasks)) dispatch(setTasks(data.tasks));
+      if (Array.isArray(data.exams)) dispatch(setExams(data.exams));
+      if (Array.isArray(data.notes)) dispatch(setNotes(data.notes));
 
       setJsonInput('');
       onClose();
       Alert.alert(
         'Pemulihan Berhasil! 🎉',
-        'Seluruh jadwal, tugas, catatan, dan profil belajar Anda telah berhasil dipulihkan dari cadangan.'
+        'Seluruh jadwal, tugas, catatan, dan profil belajar Anda telah berhasil dipulihkan secara aman.'
       );
-    } catch (err) {
+    } catch (err: any) {
       Alert.alert(
         'Format Tidak Valid',
-        'Teks yang Anda masukkan bukan format JSON cadangan MyAsisstent yang valid. Pastikan Anda menyalin seluruh isi file cadangan.'
+        err.message || 'Teks yang Anda masukkan bukan format JSON cadangan MyAsisstent yang valid.'
       );
     } finally {
       setIsProcessing(false);

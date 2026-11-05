@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { X, Sparkles } from 'lucide-react-native';
 import { TaskWithSubtasks } from '../../tasks/taskSlice';
@@ -53,15 +54,20 @@ export const TaskPickerModal: React.FC<TaskPickerModalProps> = ({
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Pilih Tugas untuk Difokuskan</Text>
-            <TouchableOpacity onPress={onClose}>
-              <X size={20} color="#0F1B33" />
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={{ maxHeight: 320 }}>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Pilih Tugas untuk Difokuskan</Text>
+                <TouchableOpacity
+                  onPress={onClose}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <X size={20} color="#0F1B33" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
             {/* Option to clear active task / focus without linked task */}
             <TouchableOpacity
               style={[
@@ -120,8 +126,10 @@ export const TaskPickerModal: React.FC<TaskPickerModalProps> = ({
               );
             })}
           </ScrollView>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };

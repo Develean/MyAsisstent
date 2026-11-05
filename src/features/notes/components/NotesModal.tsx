@@ -183,6 +183,7 @@ export const NotesModal: React.FC<NotesModalProps> = ({
                   placeholderTextColor="#94A3B8"
                   value={content}
                   onChangeText={setContent}
+                  maxLength={1000}
                   multiline
                   numberOfLines={3}
                   textAlignVertical="top"

@@ -368,6 +368,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   placeholderTextColor="#94A3B8"
                   value={newSubtaskTitle}
                   onChangeText={setNewSubtaskTitle}
+                  maxLength={120}
                   onSubmitEditing={handleAddSubtask}
                 />
                 <TouchableOpacity style={styles.addSubtaskBtn} onPress={handleAddSubtask}>

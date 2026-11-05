@@ -117,6 +117,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ visible, onC
                   onChangeText={setName}
                   placeholder="Misal: Develean"
                   placeholderTextColor="#94A3B8"
+                  maxLength={50}
                 />
               </View>
 
@@ -132,6 +133,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ visible, onC
                   onChangeText={setGrade}
                   placeholder="Misal: Kelas 11 MIPA / Mahasiswa / Umum"
                   placeholderTextColor="#94A3B8"
+                  maxLength={50}
                 />
               </View>
 
@@ -147,6 +149,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ visible, onC
                   onChangeText={setSchool}
                   placeholder="Misal: SMAN 1 Jakarta / Nama Kampus"
                   placeholderTextColor="#94A3B8"
+                  maxLength={50}
                 />
               </View>
 

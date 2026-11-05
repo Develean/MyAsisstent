@@ -273,6 +273,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                       placeholderTextColor="#94A3B8"
                       value={taskTitle}
                       onChangeText={setTaskTitle}
+                      maxLength={120}
                       autoFocus
                     />
 
@@ -335,6 +336,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                             style={styles.inlineInput}
                             placeholder="YYYY-MM-DD"
                             placeholderTextColor="#94A3B8"
+                            maxLength={10}
                             value={taskDeadlineDate}
                             onChangeText={(val) => {
                               setTaskDeadlineDate(val);
@@ -350,6 +352,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                             style={styles.inlineInput}
                             placeholder="23:59"
                             placeholderTextColor="#94A3B8"
+                            maxLength={5}
                             value={taskDeadlineTime}
                             onChangeText={setTaskDeadlineTime}
                           />
@@ -430,6 +433,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                       placeholderTextColor="#94A3B8"
                       value={examTitle}
                       onChangeText={setExamTitle}
+                      maxLength={120}
                       autoFocus
                     />
 
@@ -491,6 +495,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                         style={styles.inlineInput}
                         placeholder="YYYY-MM-DD (Contoh: 2026-11-15)"
                         placeholderTextColor="#94A3B8"
+                        maxLength={10}
                         value={examDate}
                         onChangeText={(val) => {
                           setExamDate(val);
@@ -523,6 +528,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                       placeholderTextColor="#94A3B8"
                       value={subjectName}
                       onChangeText={setSubjectName}
+                      maxLength={50}
                       autoFocus
                     />
 
@@ -535,6 +541,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                           placeholderTextColor="#94A3B8"
                           value={startTime}
                           onChangeText={setStartTime}
+                          maxLength={5}
                         />
                       </View>
                       <View style={{ flex: 1, marginLeft: 10 }}>
@@ -545,6 +552,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                           placeholderTextColor="#94A3B8"
                           value={endTime}
                           onChangeText={setEndTime}
+                          maxLength={5}
                         />
                       </View>
                     </View>
@@ -556,6 +564,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                       placeholderTextColor="#94A3B8"
                       value={subjectRoom}
                       onChangeText={setSubjectRoom}
+                      maxLength={50}
                     />
                   </View>
                 )}

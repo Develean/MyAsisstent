@@ -11,7 +11,9 @@ import { LocalNotificationService } from './src/shared/notifications/notificatio
 import { setTasks } from './src/features/tasks/taskSlice';
 import { setSubjects, setSchedules, setExams } from './src/features/schedule/scheduleSlice';
 import { setNotes } from './src/features/notes/noteSlice';
-import { setUserProfile } from './src/features/user/userSlice';
+import { setUserProfile, addExp, recordDailyActivity } from './src/features/user/userSlice';
+import { claimSessionReward } from './src/features/focus/focusSlice';
+import { getDateOnlyString } from './src/shared/utils/dateUtils';
 import { OnboardingScreen } from './src/features/onboarding/OnboardingScreen';
 import { BottomTabNavigator } from './src/shared/navigation/BottomTabNavigator';
 import { QuickAddModal } from './src/shared/components/QuickAddModal';
@@ -21,7 +23,20 @@ const MainAppContent: React.FC = () => {
   const hasCompletedOnboarding = useAppSelector(
     (state) => state.user.hasCompletedOnboarding
   );
+  const sessionCompletedPendingReward = useAppSelector(
+    (state) => state.focus.sessionCompletedPendingReward
+  );
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  // Global handler for background focus session completion reward
+  useEffect(() => {
+    if (sessionCompletedPendingReward) {
+      dispatch(claimSessionReward());
+      dispatch(addExp(10));
+      dispatch(recordDailyActivity());
+      LocalDataRepository.recordExpAndActivity(10);
+    }
+  }, [sessionCompletedPendingReward, dispatch]);
 
   // Load persistent SQLite data into Redux on mount
   useEffect(() => {
@@ -29,7 +44,7 @@ const MainAppContent: React.FC = () => {
       const savedProfile = LocalDataRepository.loadUserProfile();
       if (savedProfile && savedProfile.hasCompletedOnboarding) {
         if (savedProfile.lastActiveDate) {
-          const today = new Date().toISOString().split('T')[0];
+          const today = getDateOnlyString();
           const [y1, m1, d1] = savedProfile.lastActiveDate.split('-').map(Number);
           const [y2, m2, d2] = today.split('-').map(Number);
           const prevUTC = Date.UTC(y1, m1 - 1, d1);

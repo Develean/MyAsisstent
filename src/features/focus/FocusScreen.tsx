@@ -147,24 +147,13 @@ export const FocusScreen: React.FC = () => {
       dispatch(claimSessionReward());
       dispatch(addExp(10));
       dispatch(recordDailyActivity());
-
-      // Persist streak to SQLite
-      const today = new Date().toISOString().split('T')[0];
-      const currentProfile = LocalDataRepository.loadUserProfile();
-      if (currentProfile) {
-        LocalDataRepository.saveUserProfile({
-          ...currentProfile,
-          currentExp: user.currentExp + 10,
-          streakDays: currentProfile.lastActiveDate === today ? currentProfile.streakDays : currentProfile.streakDays + 1,
-          lastActiveDate: today,
-        });
-      }
+      LocalDataRepository.recordExpAndActivity(10);
 
       setSessionCompletedCelebration(true);
       showToast('Sesi Fokus Tuntas!', '+10 EXP berhasil diklaim & streak diperbarui', 'exp');
       setTimeout(() => setSessionCompletedCelebration(false), 4500);
     }
-  }, [focus.sessionCompletedPendingReward, dispatch, user.currentExp]);
+  }, [focus.sessionCompletedPendingReward, dispatch]);
 
   // Subtask Handlers with SQLite persistence
   const handleToggleSubtask = (subtaskId: number, currentCompleted: boolean) => {
@@ -180,6 +169,7 @@ export const FocusScreen: React.FC = () => {
       if (!currentCompleted) {
         dispatch(addExp(5));
         dispatch(recordDailyActivity());
+        LocalDataRepository.recordExpAndActivity(5);
         showToast('Langkah Mini Tuntas!', '+5 EXP ditambahkan', 'exp');
       } else {
         showToast('Subtask Diperbarui', 'Subtask dikembalikan', 'info');
@@ -239,11 +229,34 @@ export const FocusScreen: React.FC = () => {
   };
 
   const handleResetTimer = async () => {
-    dispatch(resetTimer());
-    if (focusNotificationIdRef.current) {
-      await LocalNotificationService.cancelNotification(focusNotificationIdRef.current);
-      focusNotificationIdRef.current = null;
+    const totalSecs = (focus.durationMinutes || 25) * 60;
+    const isElapsed = focus.isRunning || focus.remainingSeconds !== totalSecs;
+
+    if (isElapsed) {
+      Alert.alert(
+        'Reset Waktu Fokus?',
+        'Sesi fokus yang sedang berjalan akan diulang kembali dari awal.',
+        [
+          { text: 'Batal', style: 'cancel' },
+          {
+            text: 'Reset',
+            style: 'destructive',
+            onPress: async () => {
+              triggerHaptic('medium');
+              dispatch(resetTimer());
+              if (focusNotificationIdRef.current) {
+                await LocalNotificationService.cancelNotification(focusNotificationIdRef.current);
+                focusNotificationIdRef.current = null;
+              }
+              showToast('Timer Direset', `Waktu dikembalikan ke ${focus.durationMinutes || 25} menit`, 'info');
+            },
+          },
+        ]
+      );
+      return;
     }
+
+    dispatch(resetTimer());
     showToast('Timer Direset', `Waktu dikembalikan ke ${focus.durationMinutes || 25} menit`, 'info');
   };
 
