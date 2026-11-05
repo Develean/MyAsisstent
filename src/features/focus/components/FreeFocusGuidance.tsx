@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Sparkles, Info } from 'lucide-react-native';
+import { Sparkles, ArrowRight } from 'lucide-react-native';
 
 interface FreeFocusGuidanceProps {
   activeTasksCount: number;
@@ -12,104 +12,89 @@ export const FreeFocusGuidance: React.FC<FreeFocusGuidanceProps> = ({
   onOpenTaskPicker,
 }) => {
   return (
-    <View style={styles.freeFocusGuidanceCard}>
-      <View style={styles.guidanceIconCircle}>
-        <Sparkles size={24} color="#2563EB" />
+    <View style={styles.cardContainer}>
+      <View style={styles.iconCircle}>
+        <Sparkles size={18} color="#2563EB" />
       </View>
-      <Text style={styles.guidanceTitle}>Mode Belajar Mandiri Aktif</Text>
-      <Text style={styles.guidanceSubtitle}>
-        Timer Pomodoro siap menemani sesi belajar bebasmu. Ingin checklist langkah kerja terstruktur? Kaitkan dengan tugas aktif di bawah.
-      </Text>
-      {activeTasksCount > 0 ? (
+
+      <View style={styles.textContainer}>
+        <Text style={styles.cardTitle}>Mode Belajar Mandiri</Text>
+        <Text style={styles.cardSubtitle} numberOfLines={2}>
+          {activeTasksCount > 0
+            ? `${activeTasksCount} tugas tersedia untuk dikaitkan`
+            : 'Fokus bebas tanpa tugas terikat. EXP tetap bertambah!'}
+        </Text>
+      </View>
+
+      {activeTasksCount > 0 && (
         <TouchableOpacity
-          style={styles.guidanceCtaBtn}
+          style={styles.actionPillBtn}
           onPress={onOpenTaskPicker}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Kaitkan tugas"
         >
-          <Sparkles size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-          <Text style={styles.guidanceCtaText}>
-            Kaitkan dengan Tugas ({activeTasksCount} Tugas Aktif)
-          </Text>
+          <Text style={styles.actionPillText}>Pilih Tugas</Text>
+          <ArrowRight size={13} color="#2563EB" style={{ marginLeft: 3 }} />
         </TouchableOpacity>
-      ) : (
-        <View style={styles.guidanceTipsBox}>
-          <Info size={14} color="#64748B" style={{ marginRight: 6 }} />
-          <Text style={styles.guidanceTipsText}>
-            Belum ada tugas terdaftar. Belajar mandiri tetap menghasilkan EXP setiap sesi tuntas!
-          </Text>
-        </View>
       )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  freeFocusGuidanceCard: {
+  cardContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
+    gap: 12,
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
     elevation: 2,
   },
-  guidanceIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
   },
-  guidanceTitle: {
-    fontSize: 15,
+  textContainer: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 14,
     fontWeight: '800',
     color: '#0F1B33',
-    marginBottom: 6,
-    textAlign: 'center',
   },
-  guidanceSubtitle: {
+  cardSubtitle: {
     fontSize: 12,
     color: '#64748B',
-    lineHeight: 18,
-    textAlign: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 10,
-  },
-  guidanceCtaBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2563EB',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    width: '100%',
-  },
-  guidanceCtaText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  guidanceTipsBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    width: '100%',
-  },
-  guidanceTipsText: {
-    fontSize: 12,
-    color: '#64748B',
-    flex: 1,
     lineHeight: 16,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  actionPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  actionPillText: {
+    color: '#2563EB',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

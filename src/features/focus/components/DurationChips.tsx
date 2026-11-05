@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   presetChip: {
     paddingHorizontal: 18,

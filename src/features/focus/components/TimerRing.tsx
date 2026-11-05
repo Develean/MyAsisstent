@@ -99,8 +99,9 @@ const styles = StyleSheet.create({
     height: 240,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
     position: 'relative',
+    alignSelf: 'center',
   },
   timerPulsingHalo: {
     position: 'absolute',

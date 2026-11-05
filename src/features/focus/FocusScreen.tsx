@@ -284,6 +284,7 @@ export const FocusScreen: React.FC = () => {
     : 0;
   const circumference = 2 * Math.PI * 100;
   const strokeDashoffset = circumference * (1 - progressRatio);
+  const canReset = focus.isRunning || focus.remainingSeconds !== totalSeconds;
 
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(
@@ -300,8 +301,14 @@ export const FocusScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Mode fokus</Text>
+        <View style={styles.topHeaderRow}>
+          <Text style={styles.screenTitle}>Mode Fokus</Text>
+          <View style={styles.sessionBadge}>
+            <Sparkles size={13} color="#2563EB" style={{ marginRight: 4 }} />
+            <Text style={styles.sessionBadgeText}>
+              {focus.completedSessions} Sesi Selesai
+            </Text>
+          </View>
         </View>
 
         {/* Celebration Banner */}
@@ -314,8 +321,8 @@ export const FocusScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Active Task Card or Link Task Pill */}
-        {activeTask ? (
+        {/* Active Task Card (Shown when task is linked) */}
+        {activeTask && (
           <TouchableOpacity
             style={styles.taskCard}
             activeOpacity={0.9}
@@ -334,16 +341,7 @@ export const FocusScreen: React.FC = () => {
             </View>
             <ChevronDown size={18} color="#4A5670" />
           </TouchableOpacity>
-        ) : tasks.filter((t) => !t.isCompleted).length > 0 ? (
-          <TouchableOpacity
-            style={styles.chooseTaskPillBtn}
-            onPress={() => setIsTaskPickerOpen(true)}
-            activeOpacity={0.8}
-          >
-            <Sparkles size={14} color="#2563EB" style={{ marginRight: 6 }} />
-            <Text style={styles.chooseTaskPillText}>+ Kaitkan dengan Tugas (Opsional)</Text>
-          </TouchableOpacity>
-        ) : null}
+        )}
 
         {/* 1. Timer Ring Component */}
         <TimerRing
@@ -362,9 +360,10 @@ export const FocusScreen: React.FC = () => {
           onOpenCustomModal={() => setIsCustomModalOpen(true)}
         />
 
-        {/* 3. Focus Controls (Play/Pause & Reset) */}
+        {/* 3. Focus Controls (Centered Play/Pause & Balanced Reset) */}
         <FocusControls
           isRunning={focus.isRunning}
+          canReset={canReset}
           onTogglePlay={handleTogglePlay}
           onResetTimer={handleResetTimer}
         />
@@ -428,14 +427,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
-  header: {
+  topHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingTop: 4,
   },
-  title: {
-    fontSize: 20,
+  screenTitle: {
+    fontSize: 28,
     fontWeight: '800',
     color: '#0F1B33',
+    letterSpacing: -0.5,
+  },
+  sessionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  sessionBadgeText: {
+    color: '#2563EB',
+    fontSize: 12,
+    fontWeight: '700',
   },
   celebrationBanner: {
     flexDirection: 'row',
@@ -489,23 +505,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0F1B33',
     marginTop: 1,
-  },
-  chooseTaskPillBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    marginBottom: 10,
-  },
-  chooseTaskPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#2563EB',
   },
 });
 
