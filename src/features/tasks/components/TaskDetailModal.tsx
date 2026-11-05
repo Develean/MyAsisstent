@@ -38,6 +38,7 @@ import { AnimatedCheckbox } from '../../../shared/components/AnimatedCheckbox';
 import { ActionFeedbackToast, ToastType } from '../../../shared/components/ActionFeedbackToast';
 import { formatDeadlineDisplay } from '../../../shared/utils/dateUtils';
 import { generateId } from '../../../shared/utils/idGenerator';
+import { triggerHaptic } from '../../../shared/utils/haptics';
 
 interface TaskDetailModalProps {
   task: TaskWithSubtasks | null;
@@ -80,6 +81,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   const handleToggleMainTask = () => {
     const willComplete = !task.isCompleted;
+    if (willComplete) {
+      triggerHaptic('success');
+    } else {
+      triggerHaptic('light');
+    }
     dispatch(toggleTaskCompletion(task.id));
     const updated = {
       ...task,
@@ -98,6 +104,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   };
 
   const handleToggleSubtask = (subId: number, currentCompleted: boolean) => {
+    if (!currentCompleted) {
+      triggerHaptic('success');
+    } else {
+      triggerHaptic('light');
+    }
     dispatch(toggleSubtaskCompletion({ taskId: task.id, subtaskId: subId }));
     LocalDataRepository.updateSubtaskCompletion(subId, !currentCompleted);
 
@@ -112,6 +123,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   const handleAddSubtask = () => {
     if (!newSubtaskTitle.trim()) return;
+    triggerHaptic('medium');
     const title = newSubtaskTitle.trim();
     const subtaskId = generateId();
     const newSubtask = {
@@ -128,6 +140,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   };
 
   const handleAutoBreakdown = () => {
+    triggerHaptic('medium');
     const generated = autoGenerateSubtasks(task.title);
     const newSubtasks = generated.map((g) => ({
       id: generateId(),
@@ -278,8 +291,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <TouchableOpacity
                         onPress={() => handleDeleteSubtask(sub.id)}
                         style={styles.deleteSubtaskBtn}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Hapus subtask"
                       >
-                        <Trash2 size={15} color="#94A3B8" />
+                        <Trash2 size={16} color="#94A3B8" />
                       </TouchableOpacity>
                     </View>
                   ))
@@ -507,7 +523,10 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
   deleteSubtaskBtn: {
-    padding: 4,
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addSubtaskRow: {
     flexDirection: 'row',

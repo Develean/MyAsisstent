@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -19,6 +19,26 @@ export const TimerRing: React.FC<TimerRingProps> = ({
   circumference,
   pulseAnim,
 }) => {
+  const animatedOffset = useRef(new Animated.Value(strokeDashoffset)).current;
+  const [currentDisplayOffset, setCurrentDisplayOffset] = useState(strokeDashoffset);
+
+  useEffect(() => {
+    const listenerId = animatedOffset.addListener(({ value }) => {
+      setCurrentDisplayOffset(value);
+    });
+    return () => {
+      animatedOffset.removeListener(listenerId);
+    };
+  }, [animatedOffset]);
+
+  useEffect(() => {
+    Animated.timing(animatedOffset, {
+      toValue: strokeDashoffset,
+      duration: isRunning ? 950 : 350,
+      useNativeDriver: false,
+    }).start();
+  }, [strokeDashoffset, isRunning, animatedOffset]);
+
   return (
     <Animated.View
       style={[
@@ -39,7 +59,7 @@ export const TimerRing: React.FC<TimerRingProps> = ({
           strokeWidth={16}
           fill="none"
         />
-        {/* Blue Progress Stroke */}
+        {/* Blue Progress Stroke with Smooth Animated Interpolation */}
         <Circle
           cx={120}
           cy={120}
@@ -48,7 +68,7 @@ export const TimerRing: React.FC<TimerRingProps> = ({
           strokeWidth={16}
           fill="none"
           strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
+          strokeDashoffset={currentDisplayOffset}
           strokeLinecap="round"
           transform="rotate(-90 120 120)"
         />
@@ -77,10 +97,9 @@ const styles = StyleSheet.create({
   timerRingContainer: {
     width: 240,
     height: 240,
-    alignSelf: 'center',
-    marginVertical: 20,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
     position: 'relative',
   },
   timerPulsingHalo: {
@@ -88,37 +107,39 @@ const styles = StyleSheet.create({
     width: 260,
     height: 260,
     borderRadius: 130,
-    backgroundColor: '#EFF6FF',
-    opacity: 0.6,
+    backgroundColor: '#DBEAFE',
+    opacity: 0.45,
   },
   timerSvg: {
     position: 'absolute',
+    top: 0,
+    left: 0,
   },
   timerCenterTextContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   timerDigits: {
-    fontSize: 48,
-    fontWeight: '800',
+    fontSize: 44,
+    fontWeight: '900',
     color: '#0F1B33',
     letterSpacing: -1,
   },
   timerSubLabel: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#64748B',
+    color: '#4A5670',
+    fontWeight: '600',
     marginTop: 2,
   },
   timerRunningIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 8,
-    marginTop: 6,
-    gap: 5,
+    borderRadius: 999,
+    marginTop: 8,
   },
   timerRunningDot: {
     width: 6,
@@ -128,19 +149,19 @@ const styles = StyleSheet.create({
   },
   timerRunningText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#16A34A',
+    fontWeight: '800',
+    color: '#15803D',
   },
   timerPausedIndicator: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 8,
-    marginTop: 6,
+    borderRadius: 999,
+    marginTop: 8,
   },
   timerPausedText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#2563EB',
   },
 });

@@ -5,6 +5,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  ScrollView,
   StyleSheet,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
@@ -18,6 +19,7 @@ import { LocalDataRepository } from '../../db/repository';
 import { LocalNotificationService } from '../notifications/notificationService';
 import { generateId } from '../utils/idGenerator';
 import { getDefaultTomorrowDeadlineISO } from '../utils/dateUtils';
+import { triggerHaptic } from '../utils/haptics';
 import { CheckSquare, Calendar, X, Plus, Sparkles } from 'lucide-react-native';
 
 interface QuickAddModalProps {
@@ -42,6 +44,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
   const handleSave = () => {
     if (mode === 'task') {
       if (!taskTitle.trim()) return;
+      triggerHaptic('success');
       const taskId = generateId();
       const generated = autoBreakdown ? autoGenerateSubtasks(taskTitle.trim()) : [];
       const subtasks = generated.map((g) => ({
@@ -77,6 +80,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
       setTaskTitle('');
     } else {
       if (!subjectName.trim()) return;
+      triggerHaptic('success');
       const subId = generateId();
       const newSubject = {
         id: subId,
@@ -118,131 +122,153 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
               {/* Header */}
               <View style={styles.header}>
                 <Text style={styles.modalTitle}>Tambah Cepat</Text>
-                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <TouchableOpacity
+                  onPress={onClose}
+                  style={styles.closeBtn}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
                   <X size={18} color="#64748B" />
                 </TouchableOpacity>
               </View>
 
-              {/* Toggle Mode */}
-              <View style={styles.modeTabs}>
-                <TouchableOpacity
-                  style={[styles.modeTab, mode === 'task' && styles.modeTabActive]}
-                  onPress={() => setMode('task')}
-                >
-                  <CheckSquare size={14} color={mode === 'task' ? '#FFFFFF' : '#64748B'} />
-                  <Text style={[styles.modeTabText, mode === 'task' && styles.modeTabTextActive]}>
-                    Tugas Sekolah
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.modeTab, mode === 'subject' && styles.modeTabActive]}
-                  onPress={() => setMode('subject')}
-                >
-                  <Calendar size={14} color={mode === 'subject' ? '#FFFFFF' : '#64748B'} />
-                  <Text style={[styles.modeTabText, mode === 'subject' && styles.modeTabTextActive]}>
-                    Mata Pelajaran
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Form Body */}
-              {mode === 'task' ? (
-                <View style={styles.formContainer}>
-                  <Text style={styles.label}>Judul Tugas / PR</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Contoh: Latihan Soal Bab 3 Hal 45"
-                    placeholderTextColor="#94A3B8"
-                    value={taskTitle}
-                    onChangeText={setTaskTitle}
-                    autoFocus
-                  />
-
-                  <Text style={[styles.label, { marginTop: 12 }]}>Tingkat Prioritas</Text>
-                  <View style={styles.priorityRow}>
-                    {(['low', 'normal', 'urgent'] as const).map((p) => {
-                      const isActive = taskPriority === p;
-                      const label = p === 'urgent' ? 'Penting / Ujian' : p === 'normal' ? 'Normal' : 'Santai';
-                      return (
-                        <TouchableOpacity
-                          key={p}
-                          style={[styles.priorityBtn, isActive && styles.priorityBtnActive]}
-                          onPress={() => setTaskPriority(p)}
-                        >
-                          <Text style={[styles.priorityBtnText, isActive && styles.priorityBtnTextActive]}>
-                            {label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-
-                  {/* Auto Breakdown Checkbox */}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                style={styles.scrollableForm}
+              >
+                {/* Toggle Mode */}
+                <View style={styles.modeTabs}>
                   <TouchableOpacity
-                    style={styles.breakdownToggle}
-                    activeOpacity={0.8}
-                    onPress={() => setAutoBreakdown(!autoBreakdown)}
+                    style={[styles.modeTab, mode === 'task' && styles.modeTabActive]}
+                    onPress={() => {
+                      triggerHaptic('selection');
+                      setMode('task');
+                    }}
                   >
-                    <View style={[styles.checkbox, autoBreakdown && styles.checkboxActive]}>
-                      {autoBreakdown && <CheckSquare size={16} color="#FFFFFF" />}
-                    </View>
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Sparkles size={13} color="#2563EB" />
-                        <Text style={styles.breakdownTitle}>Pecah Jadi Subtask Otomatis</Text>
-                      </View>
-                      <Text style={styles.breakdownDesc}>
-                        Otomatis bagi jadi 3–4 langkah pengerjaan mini 15–20 menit
-                      </Text>
-                    </View>
+                    <CheckSquare size={14} color={mode === 'task' ? '#FFFFFF' : '#64748B'} />
+                    <Text style={[styles.modeTabText, mode === 'task' && styles.modeTabTextActive]}>
+                      Tugas Sekolah
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modeTab, mode === 'subject' && styles.modeTabActive]}
+                    onPress={() => {
+                      triggerHaptic('selection');
+                      setMode('subject');
+                    }}
+                  >
+                    <Calendar size={14} color={mode === 'subject' ? '#FFFFFF' : '#64748B'} />
+                    <Text style={[styles.modeTabText, mode === 'subject' && styles.modeTabTextActive]}>
+                      Mata Pelajaran
+                    </Text>
                   </TouchableOpacity>
                 </View>
-              ) : (
-                <View style={styles.formContainer}>
-                  <Text style={styles.label}>Nama Mata Pelajaran</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Contoh: Biologi, Matematika Wajib"
-                    placeholderTextColor="#94A3B8"
-                    value={subjectName}
-                    onChangeText={setSubjectName}
-                    autoFocus
-                  />
 
-                  <View style={styles.rowInputs}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.label, { marginTop: 12 }]}>Jam Mulai</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="07:30"
-                        placeholderTextColor="#94A3B8"
-                        value={startTime}
-                        onChangeText={setStartTime}
-                      />
+                {/* Form Body */}
+                {mode === 'task' ? (
+                  <View style={styles.formContainer}>
+                    <Text style={styles.label}>Judul Tugas / PR</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Contoh: Latihan Soal Bab 3 Hal 45"
+                      placeholderTextColor="#94A3B8"
+                      value={taskTitle}
+                      onChangeText={setTaskTitle}
+                      autoFocus
+                    />
+
+                    <Text style={[styles.label, { marginTop: 12 }]}>Tingkat Prioritas</Text>
+                    <View style={styles.priorityRow}>
+                      {(['low', 'normal', 'urgent'] as const).map((p) => {
+                        const isActive = taskPriority === p;
+                        const label = p === 'urgent' ? 'Penting / Ujian' : p === 'normal' ? 'Normal' : 'Santai';
+                        return (
+                          <TouchableOpacity
+                            key={p}
+                            style={[styles.priorityBtn, isActive && styles.priorityBtnActive]}
+                            onPress={() => {
+                              triggerHaptic('selection');
+                              setTaskPriority(p);
+                            }}
+                          >
+                            <Text style={[styles.priorityBtnText, isActive && styles.priorityBtnTextActive]}>
+                              {label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={[styles.label, { marginTop: 12 }]}>Jam Selesai</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="09:00"
-                        placeholderTextColor="#94A3B8"
-                        value={endTime}
-                        onChangeText={setEndTime}
-                      />
-                    </View>
+
+                    {/* Auto Breakdown Checkbox */}
+                    <TouchableOpacity
+                      style={styles.breakdownToggle}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        triggerHaptic('selection');
+                        setAutoBreakdown(!autoBreakdown);
+                      }}
+                    >
+                      <View style={[styles.checkbox, autoBreakdown && styles.checkboxActive]}>
+                        {autoBreakdown && <CheckSquare size={16} color="#FFFFFF" />}
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Sparkles size={13} color="#2563EB" />
+                          <Text style={styles.breakdownTitle}>Pecah Jadi Subtask Otomatis</Text>
+                        </View>
+                        <Text style={styles.breakdownDesc}>
+                          Otomatis bagi jadi 3–4 langkah pengerjaan mini 15–20 menit
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
                   </View>
+                ) : (
+                  <View style={styles.formContainer}>
+                    <Text style={styles.label}>Nama Mata Pelajaran</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Contoh: Biologi, Matematika Wajib"
+                      placeholderTextColor="#94A3B8"
+                      value={subjectName}
+                      onChangeText={setSubjectName}
+                      autoFocus
+                    />
 
-                  <Text style={[styles.label, { marginTop: 12 }]}>Ruang Kelas / Guru (Opsional)</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Contoh: Lab Kimia / Bu Rina"
-                    placeholderTextColor="#94A3B8"
-                    value={subjectRoom}
-                    onChangeText={setSubjectRoom}
-                  />
-                </View>
-              )}
+                    <View style={styles.rowInputs}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.label, { marginTop: 12 }]}>Jam Mulai</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="07:30"
+                          placeholderTextColor="#94A3B8"
+                          value={startTime}
+                          onChangeText={setStartTime}
+                        />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={[styles.label, { marginTop: 12 }]}>Jam Selesai</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="09:00"
+                          placeholderTextColor="#94A3B8"
+                          value={endTime}
+                          onChangeText={setEndTime}
+                        />
+                      </View>
+                    </View>
+
+                    <Text style={[styles.label, { marginTop: 12 }]}>Ruang Kelas / Guru (Opsional)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Contoh: Lab Kimia / Bu Rina"
+                      placeholderTextColor="#94A3B8"
+                      value={subjectRoom}
+                      onChangeText={setSubjectRoom}
+                    />
+                  </View>
+                )}
+              </ScrollView>
 
               {/* Save Button */}
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
@@ -269,6 +295,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     padding: 20,
     paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    maxHeight: '88%',
+  },
+  scrollableForm: {
+    maxHeight: 420,
   },
   header: {
     flexDirection: 'row',

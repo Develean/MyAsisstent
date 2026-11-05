@@ -50,6 +50,7 @@ export const ProfileScreen: React.FC = () => {
     Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0,
     24
   ) + 10;
+  const bottomScrollPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 24 : 12) + 80;
 
   const handleBackupNow = async () => {
     try {
@@ -84,7 +85,7 @@ export const ProfileScreen: React.FC = () => {
   return (
     <View style={[styles.safeArea, { paddingTop: topPadding }]}>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingBottom: bottomScrollPadding }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Top Header Bar */}

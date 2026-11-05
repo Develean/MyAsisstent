@@ -203,11 +203,12 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
     Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0,
     24
   ) + 10;
+  const bottomScrollPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 24 : 12) + 80;
 
   return (
     <View style={[styles.safeArea, { paddingTop: topPadding }]}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomScrollPadding }]}
         showsVerticalScrollIndicator={false}
       >
         {/* 1. TOP BAR: Title "Jadwal", Quick Today Button, & Clickable Month Button */}

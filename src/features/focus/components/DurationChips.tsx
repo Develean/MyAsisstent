@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { triggerHaptic } from '../../../shared/utils/haptics';
 
 interface DurationChipsProps {
   durationMinutes: number;
@@ -12,20 +13,29 @@ export const DurationChips: React.FC<DurationChipsProps> = ({
   onSelectPreset,
   onOpenCustomModal,
 }) => {
+  const is25Active = durationMinutes === 25;
+  const is50Active = durationMinutes === 50;
+  const isCustomActive = durationMinutes !== 25 && durationMinutes !== 50;
+
   return (
     <View style={styles.presetChipsRow}>
       <TouchableOpacity
         style={[
           styles.presetChip,
-          durationMinutes === 25 && styles.presetChipActive,
+          is25Active && styles.presetChipActive,
         ]}
-        onPress={() => onSelectPreset(25)}
+        onPress={() => {
+          triggerHaptic('selection');
+          onSelectPreset(25);
+        }}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Pilih durasi 25 menit"
       >
         <Text
           style={[
             styles.presetChipText,
-            durationMinutes === 25 && styles.presetChipTextActive,
+            is25Active && styles.presetChipTextActive,
           ]}
         >
           25 mnt
@@ -35,15 +45,20 @@ export const DurationChips: React.FC<DurationChipsProps> = ({
       <TouchableOpacity
         style={[
           styles.presetChip,
-          durationMinutes === 50 && styles.presetChipActive,
+          is50Active && styles.presetChipActive,
         ]}
-        onPress={() => onSelectPreset(50)}
+        onPress={() => {
+          triggerHaptic('selection');
+          onSelectPreset(50);
+        }}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Pilih durasi 50 menit"
       >
         <Text
           style={[
             styles.presetChipText,
-            durationMinutes === 50 && styles.presetChipTextActive,
+            is50Active && styles.presetChipTextActive,
           ]}
         >
           50 mnt
@@ -53,24 +68,23 @@ export const DurationChips: React.FC<DurationChipsProps> = ({
       <TouchableOpacity
         style={[
           styles.presetChip,
-          durationMinutes !== 25 &&
-            durationMinutes !== 50 &&
-            styles.presetChipActive,
+          isCustomActive && styles.presetChipActive,
         ]}
-        onPress={onOpenCustomModal}
+        onPress={() => {
+          triggerHaptic('selection');
+          onOpenCustomModal();
+        }}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Pilih durasi kustom"
       >
         <Text
           style={[
             styles.presetChipText,
-            durationMinutes !== 25 &&
-              durationMinutes !== 50 &&
-              styles.presetChipTextActive,
+            isCustomActive && styles.presetChipTextActive,
           ]}
         >
-          {durationMinutes !== 25 && durationMinutes !== 50
-            ? `${durationMinutes} mnt`
-            : 'Kustom'}
+          {isCustomActive ? `${durationMinutes} mnt` : 'Kustom'}
         </Text>
       </TouchableOpacity>
     </View>
@@ -85,23 +99,34 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   presetChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   presetChipActive: {
     backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    borderColor: '#1D4ED8',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
   },
   presetChipText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#4A5670',
+    fontWeight: '800',
+    color: '#334155',
   },
   presetChipTextActive: {
     color: '#FFFFFF',
+    fontWeight: '900',
   },
 });

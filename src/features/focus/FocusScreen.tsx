@@ -33,6 +33,7 @@ import { addExp, recordDailyActivity } from '../user/userSlice';
 import { LocalDataRepository } from '../../db/repository';
 import { LocalNotificationService } from '../../shared/notifications/notificationService';
 import { generateId } from '../../shared/utils/idGenerator';
+import { triggerHaptic } from '../../shared/utils/haptics';
 import { Sparkles, ChevronDown } from 'lucide-react-native';
 import { ActionFeedbackToast, ToastType } from '../../shared/components/ActionFeedbackToast';
 
@@ -168,6 +169,11 @@ export const FocusScreen: React.FC = () => {
   // Subtask Handlers with SQLite persistence
   const handleToggleSubtask = (subtaskId: number, currentCompleted: boolean) => {
     if (activeTask) {
+      if (!currentCompleted) {
+        triggerHaptic('success');
+      } else {
+        triggerHaptic('light');
+      }
       dispatch(toggleSubtaskCompletion({ taskId: activeTask.id, subtaskId }));
       LocalDataRepository.updateSubtaskCompletion(subtaskId, !currentCompleted);
 
@@ -184,6 +190,7 @@ export const FocusScreen: React.FC = () => {
   const handleAddNewSubtask = () => {
     if (!newSubtaskTitle.trim()) return;
     if (activeTask) {
+      triggerHaptic('medium');
       const title = newSubtaskTitle.trim();
       const subtaskId = generateId();
       const newSubtask = {
@@ -209,6 +216,11 @@ export const FocusScreen: React.FC = () => {
 
   const handleTogglePlay = async () => {
     const nextRunning = !focus.isRunning;
+    if (nextRunning) {
+      triggerHaptic('medium');
+    } else {
+      triggerHaptic('light');
+    }
     dispatch(togglePlayPause());
     if (nextRunning) {
       showToast('Timer Dimulai', 'Fokus dan kurangi distraksi!', 'info');
@@ -279,10 +291,14 @@ export const FocusScreen: React.FC = () => {
     Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0,
     24
   ) + 10;
+  const bottomScrollPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 24 : 12) + 80;
 
   return (
     <View style={[styles.safeArea, { paddingTop: topPadding }]}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.container, { paddingBottom: bottomScrollPadding }]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Mode fokus</Text>
