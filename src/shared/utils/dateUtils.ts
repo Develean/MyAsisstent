@@ -54,6 +54,35 @@ export const calculateDaysLeft = (targetDateStr: string): number => {
 };
 
 /**
+ * Validates whether string is in valid YYYY-MM-DD format
+ */
+export const isValidDateString = (str?: string | null): boolean => {
+  if (!str) return false;
+  const match = str.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const [, y, m, d] = match.map(Number);
+  const date = new Date(y, m - 1, d);
+  return (
+    date.getFullYear() === y &&
+    date.getMonth() === m - 1 &&
+    date.getDate() === d
+  );
+};
+
+/**
+ * Builds local Date ISO string taking into account local timezone accurately
+ */
+export const buildLocalDeadlineISO = (dateStr: string, timeStr = '23:59'): string => {
+  if (!isValidDateString(dateStr)) {
+    return getDefaultTomorrowDeadlineISO();
+  }
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hour, min] = timeStr.split(':').map((x) => parseInt(x, 10) || 0);
+  const localDate = new Date(y, m - 1, d, hour, min, 0);
+  return localDate.toISOString();
+};
+
+/**
  * Returns an ISO 8601 string for tomorrow at 23:59:00.
  */
 export const getDefaultTomorrowDeadlineISO = (): string => {

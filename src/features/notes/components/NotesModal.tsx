@@ -10,18 +10,22 @@ import {
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../../../store/store';
 import { addNote, deleteNote, NoteWithSubject } from '../noteSlice';
 import { LocalDataRepository } from '../../../db/repository';
 import { generateId } from '../../../shared/utils/idGenerator';
 import { ActionFeedbackToast, ToastType } from '../../../shared/components/ActionFeedbackToast';
+import { formatIndonesianFullDate } from '../../../shared/utils/dateUtils';
+import { triggerHaptic } from '../../../shared/utils/haptics';
 import {
   X,
   FileText,
   Plus,
   Trash2,
   BookOpen,
+  Calendar,
 } from 'lucide-react-native';
 
 interface NotesModalProps {
@@ -45,6 +49,14 @@ export const NotesModal: React.FC<NotesModalProps> = ({
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(
     defaultSubjectId || (subjects.length > 0 ? subjects[0].id : null)
   );
+  const [filterMode, setFilterMode] = useState<'currentDate' | 'all'>(
+    defaultDate ? 'currentDate' : 'all'
+  );
+
+  const activeDate = defaultDate || new Date().toISOString().split('T')[0];
+  const displayedNotes = filterMode === 'currentDate'
+    ? notes.filter((n) => n.date === activeDate)
+    : notes;
 
   const [toast, setToast] = useState<{
     visible: boolean;
@@ -64,6 +76,7 @@ export const NotesModal: React.FC<NotesModalProps> = ({
 
   const handleSaveNote = () => {
     if (!content.trim()) return;
+    triggerHaptic('success');
     const noteSubjectId = selectedSubjectId || (subjects.length > 0 ? subjects[0].id : null);
     const chosenSubject = noteSubjectId ? subjects.find((s) => s.id === noteSubjectId) : undefined;
 
@@ -85,9 +98,23 @@ export const NotesModal: React.FC<NotesModalProps> = ({
   };
 
   const handleDeleteNote = (noteId: number) => {
-    dispatch(deleteNote(noteId));
-    LocalDataRepository.deleteNote(noteId);
-    showToast('Catatan Dihapus', 'Catatan materi telah dihapus', 'info');
+    Alert.alert(
+      'Hapus Catatan',
+      'Apakah Anda yakin ingin menghapus catatan materi ini?',
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Hapus',
+          style: 'destructive',
+          onPress: () => {
+            triggerHaptic('medium');
+            dispatch(deleteNote(noteId));
+            LocalDataRepository.deleteNote(noteId);
+            showToast('Catatan Dihapus', 'Catatan materi telah dihapus', 'info');
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -175,33 +202,89 @@ export const NotesModal: React.FC<NotesModalProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* Saved Notes List */}
+              {/* Saved Notes List Header with Filter Toggle */}
               <View style={styles.listHeaderRow}>
-                <Text style={styles.sectionLabel}>Daftar Catatan Tersimpan</Text>
-                <Text style={styles.countText}>{notes.length} catatan</Text>
+                <Text style={styles.sectionLabel}>Daftar Catatan</Text>
+                <View style={styles.toggleRow}>
+                  {defaultDate && (
+                    <TouchableOpacity
+                      style={[
+                        styles.toggleBtn,
+                        filterMode === 'currentDate' && styles.toggleBtnActive,
+                      ]}
+                      onPress={() => {
+                        triggerHaptic('selection');
+                        setFilterMode('currentDate');
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.toggleBtnText,
+                          filterMode === 'currentDate' && styles.toggleBtnTextActive,
+                        ]}
+                      >
+                        Tanggal Ini ({notes.filter((n) => n.date === activeDate).length})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={[
+                      styles.toggleBtn,
+                      filterMode === 'all' && styles.toggleBtnActive,
+                    ]}
+                    onPress={() => {
+                      triggerHaptic('selection');
+                      setFilterMode('all');
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.toggleBtnText,
+                        filterMode === 'all' && styles.toggleBtnTextActive,
+                      ]}
+                    >
+                      Semua ({notes.length})
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <ScrollView style={styles.notesListScroll} showsVerticalScrollIndicator={false}>
-                {notes.length === 0 ? (
+                {displayedNotes.length === 0 ? (
                   <View style={styles.emptyCard}>
                     <BookOpen size={24} color="#94A3B8" style={{ marginBottom: 6 }} />
-                    <Text style={styles.emptyTitle}>Belum Ada Catatan</Text>
+                    <Text style={styles.emptyTitle}>
+                      {filterMode === 'currentDate'
+                        ? 'Belum Ada Catatan untuk Tanggal Ini'
+                        : 'Belum Ada Catatan'}
+                    </Text>
                     <Text style={styles.emptySubtitle}>
-                      Tulis materi atau rumus penting di atas agar mudah dipelajari kembali sebelum ujian.
+                      {filterMode === 'currentDate'
+                        ? 'Tulis materi atau rumus penting untuk hari ini pada form di atas.'
+                        : 'Tulis materi atau rumus penting di atas agar mudah dipelajari kembali.'}
                     </Text>
                   </View>
                 ) : (
-                  notes.map((n) => {
-                    const subName = n.subject?.name || 'Mata Pelajaran';
+                  displayedNotes.map((n) => {
+                    const subName = n.subject?.name || 'Umum';
                     return (
                       <View key={n.id} style={styles.noteCard}>
                         <View style={styles.noteTopRow}>
-                          <View style={styles.subjectTag}>
-                            <Text style={styles.subjectTagText}>{subName}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <View style={styles.subjectTag}>
+                              <Text style={styles.subjectTagText}>{subName}</Text>
+                            </View>
+                            <View style={styles.noteDateTag}>
+                              <Calendar size={10} color="#64748B" />
+                              <Text style={styles.noteDateTagText}>
+                                {formatIndonesianFullDate(n.date)}
+                              </Text>
+                            </View>
                           </View>
                           <TouchableOpacity
                             onPress={() => handleDeleteNote(n.id)}
                             style={styles.deleteNoteBtn}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                           >
                             <Trash2 size={15} color="#94A3B8" />
                           </TouchableOpacity>
@@ -345,9 +428,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  countText: {
+  toggleRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    padding: 2,
+    gap: 3,
+  },
+  toggleBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  toggleBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#0F1B33',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  toggleBtnText: {
     fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  toggleBtnTextActive: {
+    color: '#2563EB',
     fontWeight: '700',
+  },
+  noteDateTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  noteDateTagText: {
+    fontSize: 10,
+    fontWeight: '600',
     color: '#64748B',
   },
   notesListScroll: {

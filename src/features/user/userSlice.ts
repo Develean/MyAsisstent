@@ -56,8 +56,10 @@ export const userSlice = createSlice({
         state.currentExp -= state.maxExp;
         state.currentLevel += 1;
         state.maxExp = Math.round(state.maxExp * 1.3);
-        if (state.currentLevel === 4) state.levelTitle = 'Master';
-        if (state.currentLevel >= 5) state.levelTitle = 'Wisudawan';
+        if (state.currentLevel === 2) state.levelTitle = 'Pelajar Rajin';
+        else if (state.currentLevel === 3) state.levelTitle = 'Kutu Buku';
+        else if (state.currentLevel === 4) state.levelTitle = 'Master Belajar';
+        else if (state.currentLevel >= 5) state.levelTitle = 'Wisudawan';
       }
     },
     incrementStreak: (state) => {

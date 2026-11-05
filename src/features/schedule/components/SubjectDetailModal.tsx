@@ -9,6 +9,7 @@ import {
   TouchableWithoutFeedback,
   TextInput,
   Platform,
+  Alert,
 } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../../../store/store';
 import { ScheduleWithSubject, deleteSchedule } from '../scheduleSlice';
@@ -48,10 +49,8 @@ export const SubjectDetailModal: React.FC<SubjectDetailModalProps> = ({
 
   if (!schedule) return null;
 
-  // Filter tasks belonging to this subject
-  const subjectTasks = tasks.filter(
-    (t) => t.subjectId === schedule.subjectId || t.title.toLowerCase().includes(schedule.subject.name.toLowerCase())
-  );
+  // Filter tasks belonging strictly to this subject
+  const subjectTasks = tasks.filter((t) => t.subjectId === schedule.subjectId);
 
   const handleCreateTask = () => {
     if (!newTaskTitle.trim()) return;
@@ -85,9 +84,22 @@ export const SubjectDetailModal: React.FC<SubjectDetailModalProps> = ({
   };
 
   const handleDeleteSchedule = () => {
-    dispatch(deleteSchedule(schedule.id));
-    LocalDataRepository.deleteSchedule(schedule.id);
-    onClose();
+    Alert.alert(
+      'Hapus Jadwal Pelajaran',
+      `Apakah Anda yakin ingin menghapus jadwal "${schedule.subject.name}" (${schedule.dayOfWeek}, ${schedule.startTime} - ${schedule.endTime})?`,
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Hapus',
+          style: 'destructive',
+          onPress: () => {
+            dispatch(deleteSchedule(schedule.id));
+            LocalDataRepository.deleteSchedule(schedule.id);
+            onClose();
+          },
+        },
+      ]
+    );
   };
 
   const handleToggleTask = (task: typeof tasks[0]) => {

@@ -3,6 +3,7 @@ import { Subject, Schedule, Task, Subtask, Exam, Note } from './schema';
 import { TaskWithSubtasks } from '../features/tasks/taskSlice';
 import { ScheduleWithSubject, ExamWithSubject } from '../features/schedule/scheduleSlice';
 import { NoteWithSubject } from '../features/notes/noteSlice';
+import { calculateDaysLeft } from '../shared/utils/dateUtils';
 
 export class LocalDataRepository {
   /**
@@ -298,12 +299,7 @@ export class LocalDataRepository {
       `);
 
       return rows.map((r) => {
-        const examDate = new Date(r.examDate);
-        const today = new Date();
-        const diffDays = Math.max(
-          0,
-          Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-        );
+        const diffDays = calculateDaysLeft(r.examDate);
 
         return {
           id: r.id,
@@ -496,6 +492,56 @@ export class LocalDataRepository {
       );
     } catch (err) {
       console.warn('Failed to save user profile to SQLite:', err);
+    }
+  }
+
+  /**
+   * Centralized helper to increment EXP and update daily activity streak in SQLite
+   */
+  static recordExpAndActivity(expGained: number): void {
+    try {
+      const profile = this.loadUserProfile();
+      if (!profile) return;
+      const today = new Date().toISOString().split('T')[0];
+      let currentExp = profile.currentExp + expGained;
+      let currentLevel = profile.currentLevel;
+      let maxExp = profile.maxExp;
+      let levelTitle = profile.levelTitle;
+
+      while (currentExp >= maxExp) {
+        currentExp -= maxExp;
+        currentLevel += 1;
+        maxExp = Math.round(maxExp * 1.3);
+        if (currentLevel === 2) levelTitle = 'Pelajar Rajin';
+        else if (currentLevel === 3) levelTitle = 'Kutu Buku';
+        else if (currentLevel === 4) levelTitle = 'Master Belajar';
+        else if (currentLevel >= 5) levelTitle = 'Wisudawan';
+      }
+
+      let streakDays = profile.streakDays;
+      if (!profile.lastActiveDate) {
+        streakDays = 1;
+      } else if (profile.lastActiveDate !== today) {
+        const [y1, m1, d1] = profile.lastActiveDate.split('-').map(Number);
+        const [y2, m2, d2] = today.split('-').map(Number);
+        const prevUTC = Date.UTC(y1, m1 - 1, d1);
+        const todayUTC = Date.UTC(y2, m2 - 1, d2);
+        const diff = Math.round((todayUTC - prevUTC) / (1000 * 60 * 60 * 24));
+        if (diff === 1) streakDays += 1;
+        else if (diff > 1) streakDays = 1;
+      }
+
+      this.saveUserProfile({
+        ...profile,
+        currentExp,
+        currentLevel,
+        maxExp,
+        levelTitle,
+        streakDays,
+        lastActiveDate: today,
+      });
+    } catch (err) {
+      console.warn('Failed to record EXP and activity in SQLite:', err);
     }
   }
 }

@@ -40,6 +40,7 @@ export const ProfileScreen: React.FC = () => {
 
   const handleExpBonus = (exp: number) => {
     dispatch(addExp(exp));
+    LocalDataRepository.recordExpAndActivity(exp);
   };
 
   const expPercentage = Math.min(100, Math.round((user.currentExp / user.maxExp) * 100));

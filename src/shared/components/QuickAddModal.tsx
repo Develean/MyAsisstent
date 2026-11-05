@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../../store/store';
 import { addTask } from '../../features/tasks/taskSlice';
@@ -21,6 +22,8 @@ import { generateId } from '../utils/idGenerator';
 import {
   getDateOnlyString,
   getCustomDeadlineISO,
+  buildLocalDeadlineISO,
+  isValidDateString,
   formatIndonesianFullDate,
   calculateDaysLeft,
 } from '../utils/dateUtils';
@@ -86,6 +89,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
   const handleSave = () => {
     if (mode === 'task') {
       if (!taskTitle.trim()) return;
+      if (!isValidDateString(taskDeadlineDate)) {
+        Alert.alert('Tanggal Tidak Valid', 'Format tanggal harus YYYY-MM-DD yang valid (contoh: 2026-11-15).');
+        return;
+      }
       triggerHaptic('success');
       const taskId = generateId();
       const generated = autoBreakdown ? autoGenerateSubtasks(taskTitle.trim()) : [];
@@ -97,9 +104,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
         orderIdx: g.orderIdx,
       }));
 
-      // Construct deadline ISO
-      const [h, m] = taskDeadlineTime.split(':').map((x) => parseInt(x, 10) || 0);
-      const deadlineISO = `${taskDeadlineDate}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000Z`;
+      // Construct deadline ISO using local timezone
+      const deadlineISO = buildLocalDeadlineISO(taskDeadlineDate, taskDeadlineTime);
 
       const newTask = {
         id: taskId,
@@ -125,6 +131,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
       setTaskTitle('');
     } else if (mode === 'exam') {
       if (!examTitle.trim() || !examDate.trim()) return;
+      if (!isValidDateString(examDate)) {
+        Alert.alert('Tanggal Tidak Valid', 'Format tanggal ujian harus YYYY-MM-DD yang valid (contoh: 2026-11-15).');
+        return;
+      }
       triggerHaptic('success');
 
       const calculatedDays = Math.max(0, calculateDaysLeft(examDate));

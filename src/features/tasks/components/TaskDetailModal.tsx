@@ -101,6 +101,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     if (willComplete) {
       dispatch(addExp(20));
       dispatch(recordDailyActivity());
+      LocalDataRepository.recordExpAndActivity(20);
       showToast('Tugas Tuntas!', '+20 EXP berhasil didapatkan', 'exp');
     } else {
       showToast('Status Tugas Diperbarui', 'Tugas dikembalikan ke antrean aktif', 'info');
@@ -119,6 +120,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     if (!currentCompleted) {
       dispatch(addExp(5));
       dispatch(recordDailyActivity());
+      LocalDataRepository.recordExpAndActivity(5);
       showToast('Langkah Mini Selesai!', '+5 EXP ditambahkan', 'exp');
     } else {
       showToast('Subtask Diperbarui', 'Subtask dikembalikan', 'info');

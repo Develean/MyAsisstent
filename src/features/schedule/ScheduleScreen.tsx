@@ -12,9 +12,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector, useAppDispatch } from '../../store/store';
-import { setSelectedDay, setSelectedDate, ScheduleWithSubject } from './scheduleSlice';
+import { setSelectedDay, setSelectedDate, ScheduleWithSubject, ExamWithSubject } from './scheduleSlice';
 import { SubjectDetailModal } from './components/SubjectDetailModal';
 import { AddExamModal } from './components/AddExamModal';
+import { ExamDetailModal } from './components/ExamDetailModal';
 import { NotesModal } from '../notes/components/NotesModal';
 import { MonthPickerModal, INDONESIAN_MONTHS } from './components/MonthPickerModal';
 import { CalendarWeekStrip, CalendarDayItem } from './components/CalendarWeekStrip';
@@ -65,6 +66,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
   const [isMonthPickerVisible, setIsMonthPickerVisible] = useState<boolean>(false);
 
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleWithSubject | null>(null);
+  const [selectedExam, setSelectedExam] = useState<ExamWithSubject | null>(null);
   const [isExamModalVisible, setIsExamModalVisible] = useState(false);
   const [isNotesModalVisible, setIsNotesModalVisible] = useState(false);
 
@@ -145,7 +147,10 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
   const activeDayName = currentActiveDayItem.dayName;
   const dbSchedulesForDay = schedules.filter((s) => s.dayOfWeek === activeDayName);
   const notesForDay = notes.filter((n) => n.date === currentActiveDayItem.fullDateStr);
-  const nearestExam = exams.length > 0 ? exams[0] : null;
+  const upcomingExams = exams
+    .filter((e) => e.daysLeft >= 0)
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+  const nearestExam = upcomingExams.length > 0 ? upcomingExams[0] : null;
 
   // Synchronize Redux selectedDay and selectedDate continuously
   useEffect(() => {
@@ -265,7 +270,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
         {nearestExam && (
           <TouchableOpacity
             style={styles.examAlertCard}
-            onPress={() => setIsExamModalVisible(true)}
+            onPress={() => setSelectedExam(nearestExam)}
             activeOpacity={0.85}
           >
             <View style={styles.examAlertLeft}>
@@ -383,6 +388,13 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
         schedule={selectedSchedule}
         visible={!!selectedSchedule}
         onClose={() => setSelectedSchedule(null)}
+      />
+
+      {/* Exam Detail & Management Modal */}
+      <ExamDetailModal
+        exam={selectedExam}
+        visible={!!selectedExam}
+        onClose={() => setSelectedExam(null)}
       />
 
       {/* Add Exam Modal */}

@@ -37,6 +37,9 @@ import { ActionFeedbackToast, ToastType } from '../../shared/components/ActionFe
 import { formatDeadlineDisplay, formatIndonesianFullDate } from '../../shared/utils/dateUtils';
 import { triggerHaptic } from '../../shared/utils/haptics';
 import { NotesModal } from '../notes/components/NotesModal';
+import { ExamDetailModal } from '../schedule/components/ExamDetailModal';
+import { AllTasksModal } from '../tasks/components/AllTasksModal';
+import { ExamWithSubject } from '../schedule/scheduleSlice';
 
 interface HomeScreenProps {
   onOpenAddModal?: () => void;
@@ -52,6 +55,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
   const exams = useAppSelector((state) => state.schedule.exams);
 
   const [selectedTask, setSelectedTask] = useState<TaskWithSubtasks | null>(null);
+  const [selectedExam, setSelectedExam] = useState<ExamWithSubject | null>(null);
+  const [isAllTasksModalOpen, setIsAllTasksModalOpen] = useState(false);
   const [toast, setToast] = useState<{
     visible: boolean;
     message: string;
@@ -73,8 +78,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
   // Active uncompleted tasks
   const activeTasks = tasks.filter((t) => !t.isCompleted);
 
-  // Nearest exam for hero countdown banner
-  const nearestExam = exams.length > 0 ? exams[0] : null;
+  // Filter only upcoming / today's exams for hero countdown banner (exclude past exams)
+  const upcomingExams = exams
+    .filter((e) => e.daysLeft >= 0)
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+  const nearestExam = upcomingExams.length > 0 ? upcomingExams[0] : null;
 
   // Real date & schedules for today
   const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -109,6 +117,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
     if (willComplete) {
       dispatch(addExp(20));
       dispatch(recordDailyActivity());
+      LocalDataRepository.recordExpAndActivity(20);
       showToast('Tugas Selesai!', '+20 EXP ditambahkan ke profilmu', 'exp');
     } else {
       showToast('Status Tugas Diperbarui', 'Tugas dikembalikan ke antrean aktif', 'info');
@@ -173,7 +182,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
             3. HERO CARD: Hitung Mundur Ujian & Maskot Hamster (Distinct High-Stakes Exam)
             ========================================================= */}
         {nearestExam ? (
-          <View style={styles.examHeroCard}>
+          <TouchableOpacity
+            style={styles.examHeroCard}
+            onPress={() => setSelectedExam(nearestExam)}
+            activeOpacity={0.9}
+          >
             <View style={styles.examHeroLeft}>
               <View style={styles.examTagRow}>
                 <AlertCircle size={13} color="#DC2626" style={{ marginRight: 4 }} />
@@ -209,7 +222,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
               style={styles.heroMascotImg}
               resizeMode="contain"
             />
-          </View>
+          </TouchableOpacity>
         ) : null}
 
         {/* =========================================================
@@ -295,14 +308,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
             ========================================================= */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionLabel}>Tugas prioritas</Text>
-          <Text style={styles.taskCountBadge}>{activeTasks.length} tugas</Text>
+          <TouchableOpacity
+            style={styles.taskCountBadgeBtn}
+            onPress={() => setIsAllTasksModalOpen(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.taskCountBadge}>{activeTasks.length} tugas</Text>
+            <ChevronRight size={13} color="#2563EB" />
+          </TouchableOpacity>
         </View>
 
         {activeTasks.length > 0 ? (
           <View style={styles.whiteCardBoxPadded}>
             {activeTasks.slice(0, 3).map((t, idx) => {
               const isLast = idx === Math.min(activeTasks.length, 3) - 1;
-              const initial = t.title.charAt(0).toUpperCase() || 'T';
+              const sub = schedules.find((s) => s.subjectId === t.subjectId)?.subject;
+              const initial = sub?.initial || t.title.charAt(0).toUpperCase() || 'T';
+              const bgColor = sub?.bgColor || '#DBEAFE';
+              const textColor = sub?.color || '#1D4ED8';
+
               return (
                 <View
                   key={t.id}
@@ -311,8 +335,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
                     isLast && { borderBottomWidth: 0, paddingBottom: 0 },
                   ]}
                 >
-                  <View style={[styles.subjectIconBox, { backgroundColor: '#DBEAFE' }]}>
-                    <Text style={[styles.subjectInitial, { color: '#1D4ED8' }]}>{initial}</Text>
+                  <View style={[styles.subjectIconBox, { backgroundColor: bgColor }]}>
+                    <Text style={[styles.subjectInitial, { color: textColor }]}>{initial}</Text>
                   </View>
                   <TouchableOpacity
                     style={{ flex: 1 }}
@@ -393,6 +417,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
       <NotesModal
         visible={isNotesModalVisible}
         onClose={() => setIsNotesModalVisible(false)}
+      />
+
+      {/* Exam Detail & Management Modal */}
+      <ExamDetailModal
+        exam={selectedExam}
+        visible={!!selectedExam}
+        onClose={() => setSelectedExam(null)}
+        onStartFocus={() => onNavigateTab && onNavigateTab('Fokus')}
+      />
+
+      {/* All Tasks Modal */}
+      <AllTasksModal
+        visible={isAllTasksModalOpen}
+        onClose={() => setIsAllTasksModalOpen(false)}
+        tasks={tasks}
+        subjects={schedules.map((s) => s.subject)}
+        onSelectTask={(task) => setSelectedTask(task)}
+        onOpenQuickAdd={() => onOpenAddModal && onOpenAddModal()}
       />
 
       {/* Floating Action Feedback Toast */}
@@ -520,7 +562,7 @@ const styles = StyleSheet.create({
   },
   countdownPillSmallText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
   },
   examTitle: {
@@ -576,10 +618,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#4A5670',
   },
+  taskCountBadgeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
   taskCountBadge: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#4A5670',
+    color: '#2563EB',
   },
   whiteCardBox: {
     marginTop: 8,

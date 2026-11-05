@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../../../store/store';
 import { addExam } from '../scheduleSlice';
@@ -20,6 +21,7 @@ import {
   getDateOnlyString,
   formatIndonesianFullDate,
   calculateDaysLeft,
+  isValidDateString,
 } from '../../../shared/utils/dateUtils';
 import { triggerHaptic } from '../../../shared/utils/haptics';
 import { X, Calendar, Plus, AlertCircle, Bell } from 'lucide-react-native';
@@ -62,6 +64,10 @@ export const AddExamModal: React.FC<AddExamModalProps> = ({ visible, onClose }) 
 
   const handleSave = () => {
     if (!title.trim() || !examDate.trim()) return;
+    if (!isValidDateString(examDate)) {
+      Alert.alert('Tanggal Tidak Valid', 'Format tanggal harus YYYY-MM-DD yang valid (contoh: 2026-11-15).');
+      return;
+    }
     triggerHaptic('success');
 
     const calculatedDays = Math.max(0, calculateDaysLeft(examDate));
