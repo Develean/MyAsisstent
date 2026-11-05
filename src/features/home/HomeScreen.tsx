@@ -36,6 +36,7 @@ import {
 import { ActionFeedbackToast, ToastType } from '../../shared/components/ActionFeedbackToast';
 import { formatDeadlineDisplay, formatIndonesianFullDate } from '../../shared/utils/dateUtils';
 import { triggerHaptic } from '../../shared/utils/haptics';
+import { getExamUrgencyConfig } from '../../shared/utils/examUrgency';
 import { NotesModal } from '../notes/components/NotesModal';
 import { ExamDetailModal } from '../schedule/components/ExamDetailModal';
 import { AllTasksModal } from '../tasks/components/AllTasksModal';
@@ -83,6 +84,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
     .filter((e) => e.daysLeft >= 0)
     .sort((a, b) => a.daysLeft - b.daysLeft);
   const nearestExam = upcomingExams.length > 0 ? upcomingExams[0] : null;
+  const examConfig = nearestExam ? getExamUrgencyConfig(nearestExam.daysLeft) : null;
 
   // Real date & schedules for today
   const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -179,21 +181,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
         </View>
 
         {/* =========================================================
-            3. HERO CARD: Hitung Mundur Ujian & Maskot Hamster (Distinct High-Stakes Exam)
+            3. HERO CARD: Hitung Mundur Ujian & Maskot Hamster (Dynamic Urgency)
             ========================================================= */}
-        {nearestExam ? (
+        {nearestExam && examConfig ? (
           <TouchableOpacity
-            style={styles.examHeroCard}
+            style={[
+              styles.examHeroCard,
+              {
+                borderColor: examConfig.cardBorder,
+                backgroundColor: examConfig.cardBg,
+                shadowColor: examConfig.tagColor,
+              },
+            ]}
             onPress={() => setSelectedExam(nearestExam)}
             activeOpacity={0.9}
           >
             <View style={styles.examHeroLeft}>
               <View style={styles.examTagRow}>
-                <AlertCircle size={13} color="#DC2626" style={{ marginRight: 4 }} />
-                <Text style={styles.examTag}>JADWAL UJIAN</Text>
-                <View style={styles.countdownPillSmall}>
-                  <Text style={styles.countdownPillSmallText}>
-                    {nearestExam.daysLeft > 0 ? `H-${nearestExam.daysLeft}` : 'Hari Ini!'}
+                <AlertCircle size={13} color={examConfig.tagColor} style={{ marginRight: 4 }} />
+                <Text style={[styles.examTag, { color: examConfig.tagColor }]}>JADWAL UJIAN</Text>
+                <View style={[styles.countdownPillSmall, { backgroundColor: examConfig.badgeBg }]}>
+                  <Text style={[styles.countdownPillSmallText, { color: examConfig.badgeText }]}>
+                    {examConfig.urgencyLabel}
                   </Text>
                 </View>
               </View>
@@ -203,13 +212,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
                   : nearestExam.title}
               </Text>
               <View style={styles.examDateMetaRow}>
-                <Calendar size={12} color="#B45309" style={{ marginRight: 4 }} />
-                <Text style={styles.examDateMetaText}>
+                <Calendar size={12} color={examConfig.subTextColor} style={{ marginRight: 4 }} />
+                <Text style={[styles.examDateMetaText, { color: examConfig.subTextColor }]}>
                   {formatIndonesianFullDate(nearestExam.examDate)}
                 </Text>
               </View>
               <TouchableOpacity
-                style={styles.reviewBtn}
+                style={[styles.reviewBtn, { backgroundColor: examConfig.btnBg }]}
                 onPress={() => onNavigateTab && onNavigateTab('Fokus')}
                 activeOpacity={0.85}
               >
@@ -218,7 +227,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenAddModal, onNaviga
             </View>
 
             <Image
-              source={require('../../../assets/senang.png')}
+              source={examConfig.mascotImage}
               style={styles.heroMascotImg}
               resizeMode="contain"
             />

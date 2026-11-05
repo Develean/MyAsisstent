@@ -13,6 +13,7 @@ import { ExamWithSubject, deleteExam } from '../scheduleSlice';
 import { LocalDataRepository } from '../../../db/repository';
 import { formatIndonesianFullDate } from '../../../shared/utils/dateUtils';
 import { triggerHaptic } from '../../../shared/utils/haptics';
+import { getExamUrgencyConfig } from '../../../shared/utils/examUrgency';
 import {
   X,
   AlertCircle,
@@ -41,6 +42,7 @@ export const ExamDetailModal: React.FC<ExamDetailModalProps> = ({
 
   const isPassed = exam.daysLeft < 0;
   const isToday = exam.daysLeft === 0;
+  const urgencyConfig = !isPassed ? getExamUrgencyConfig(exam.daysLeft) : null;
 
   const handleDelete = () => {
     Alert.alert(
@@ -100,26 +102,43 @@ export const ExamDetailModal: React.FC<ExamDetailModalProps> = ({
               )}
 
               {/* Countdown & Date Card */}
-              <View style={styles.dateCard}>
+              <View
+                style={[
+                  styles.dateCard,
+                  urgencyConfig && {
+                    backgroundColor: urgencyConfig.cardBg,
+                    borderColor: urgencyConfig.cardBorder,
+                  },
+                ]}
+              >
                 <View style={styles.dateRow}>
-                  <Calendar size={18} color="#DC2626" style={{ marginRight: 8 }} />
-                  <Text style={styles.dateText}>
+                  <Calendar
+                    size={18}
+                    color={urgencyConfig ? urgencyConfig.tagColor : '#64748B'}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text
+                    style={[
+                      styles.dateText,
+                      urgencyConfig && { color: urgencyConfig.subTextColor },
+                    ]}
+                  >
                     {formatIndonesianFullDate(exam.examDate)}
                   </Text>
                 </View>
                 <View
                   style={[
                     styles.countdownPill,
+                    urgencyConfig && { backgroundColor: urgencyConfig.badgeBg },
                     isPassed && styles.countdownPillPassed,
-                    isToday && styles.countdownPillToday,
                   ]}
                 >
                   <Text style={styles.countdownText}>
                     {isPassed
                       ? 'Telah Lewat'
-                      : isToday
-                      ? 'Hari Ini!'
-                      : `H-${exam.daysLeft} (${exam.daysLeft} Hari Lagi)`}
+                      : urgencyConfig
+                      ? urgencyConfig.urgencyLabel
+                      : `H-${exam.daysLeft}`}
                   </Text>
                 </View>
               </View>

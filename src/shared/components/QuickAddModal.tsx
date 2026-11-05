@@ -238,7 +238,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                     setMode('exam');
                   }}
                 >
-                  <AlertCircle size={13} color={mode === 'exam' ? '#FFFFFF' : '#DC2626'} />
+                  <AlertCircle size={13} color={mode === 'exam' ? '#FFFFFF' : '#2563EB'} />
                   <Text style={[styles.modeTabText, mode === 'exam' && styles.modeTabTextActive]}>
                     Jadwal Ujian
                   </Text>
@@ -417,7 +417,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                 {mode === 'exam' && (
                   <View style={styles.formContainer}>
                     <View style={styles.examBannerNotice}>
-                      <AlertCircle size={15} color="#DC2626" style={{ marginRight: 6 }} />
+                      <AlertCircle size={15} color="#2563EB" style={{ marginRight: 6 }} />
                       <Text style={styles.examBannerNoticeText}>
                         Jadwal Ujian adalah target evaluasi berkala dengan hitung mundur H-X dan pengingat khusus.
                       </Text>
@@ -425,7 +425,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
 
                     <Text style={styles.label}>Nama Ujian / Penilaian</Text>
                     <TextInput
-                      style={[styles.input, { borderColor: '#FECACA' }]}
+                      style={styles.input}
                       placeholder="Contoh: PTS Matematika Wajib"
                       placeholderTextColor="#94A3B8"
                       value={examTitle}
@@ -486,7 +486,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
                     </View>
 
                     <View style={styles.inputWithIcon}>
-                      <Calendar size={15} color="#DC2626" style={{ marginRight: 6 }} />
+                      <Calendar size={15} color="#2563EB" style={{ marginRight: 6 }} />
                       <TextInput
                         style={styles.inlineInput}
                         placeholder="YYYY-MM-DD (Contoh: 2026-11-15)"
@@ -563,10 +563,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ visible, onClose }
 
               {/* Submit CTA */}
               <TouchableOpacity
-                style={[
-                  styles.saveBtn,
-                  mode === 'exam' && { backgroundColor: '#DC2626', shadowColor: '#DC2626' },
-                ]}
+                style={styles.saveBtn}
                 onPress={handleSave}
                 activeOpacity={0.85}
               >
@@ -637,7 +634,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563EB',
   },
   modeTabExamActive: {
-    backgroundColor: '#DC2626',
+    backgroundColor: '#2563EB',
   },
   modeTabSubjectActive: {
     backgroundColor: '#0F1B33',
@@ -684,8 +681,8 @@ const styles = StyleSheet.create({
     borderColor: '#2563EB',
   },
   subChipExamActive: {
-    backgroundColor: '#DC2626',
-    borderColor: '#DC2626',
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
   },
   subChipText: {
     fontSize: 11,
@@ -717,8 +714,8 @@ const styles = StyleSheet.create({
     borderColor: '#93C5FD',
   },
   presetBtnExamActive: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FCA5A5',
+    backgroundColor: '#EFF6FF',
+    borderColor: '#93C5FD',
   },
   presetBtnText: {
     fontSize: 11,
@@ -730,7 +727,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   presetBtnExamTextActive: {
-    color: '#DC2626',
+    color: '#2563EB',
     fontWeight: '800',
   },
   dateTimeRow: {
@@ -774,9 +771,9 @@ const styles = StyleSheet.create({
   examBannerNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#EFF6FF',
     borderWidth: 1,
-    borderColor: '#FEE2E2',
+    borderColor: '#BFDBFE',
     borderRadius: 12,
     padding: 10,
     marginBottom: 12,
@@ -784,7 +781,7 @@ const styles = StyleSheet.create({
   examBannerNoticeText: {
     flex: 1,
     fontSize: 11,
-    color: '#991B1B',
+    color: '#1E40AF',
     lineHeight: 16,
     fontWeight: '500',
   },
@@ -792,9 +789,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#EFF6FF',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#BFDBFE',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 9,
@@ -803,11 +800,11 @@ const styles = StyleSheet.create({
   examPreviewDate: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#991B1B',
+    color: '#1E40AF',
     flex: 1,
   },
   examCountdownTag: {
-    backgroundColor: '#DC2626',
+    backgroundColor: '#2563EB',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,

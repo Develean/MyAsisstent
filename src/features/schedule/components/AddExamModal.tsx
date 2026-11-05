@@ -110,7 +110,7 @@ export const AddExamModal: React.FC<AddExamModalProps> = ({ visible, onClose }) 
               <View style={styles.header}>
                 <View style={styles.headerTitleRow}>
                   <View style={styles.examIconBadge}>
-                    <AlertCircle size={18} color="#DC2626" />
+                    <AlertCircle size={18} color="#2563EB" />
                   </View>
                   <View>
                     <Text style={styles.modalTitle}>Tambah Jadwal Ujian</Text>
@@ -209,7 +209,7 @@ export const AddExamModal: React.FC<AddExamModalProps> = ({ visible, onClose }) 
 
                 {/* Date Input Box */}
                 <View style={styles.dateInputWrapper}>
-                  <Calendar size={16} color="#DC2626" style={{ marginRight: 8 }} />
+                  <Calendar size={16} color="#2563EB" style={{ marginRight: 8 }} />
                   <TextInput
                     style={styles.dateTextInput}
                     placeholder="YYYY-MM-DD (Contoh: 2026-11-15)"
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   modalSubtitle: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#DC2626',
+    color: '#2563EB',
     marginTop: 1,
   },
   closeBtn: {
@@ -351,8 +351,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   daySelectBtnActive: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FCA5A5',
+    backgroundColor: '#EFF6FF',
+    borderColor: '#93C5FD',
   },
   daySelectText: {
     fontSize: 11,
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   daySelectTextActive: {
-    color: '#DC2626',
+    color: '#2563EB',
     fontWeight: '800',
   },
   dateInputWrapper: {
@@ -384,9 +384,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#EFF6FF',
     borderWidth: 1,
-    borderColor: '#FEE2E2',
+    borderColor: '#BFDBFE',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -395,11 +395,11 @@ const styles = StyleSheet.create({
   datePreviewTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#991B1B',
+    color: '#1E40AF',
     flex: 1,
   },
   countdownPill: {
-    backgroundColor: '#DC2626',
+    backgroundColor: '#2563EB',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
@@ -427,14 +427,14 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     marginTop: 8,
-    backgroundColor: '#DC2626',
+    backgroundColor: '#2563EB',
     height: 48,
     borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#DC2626',
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,

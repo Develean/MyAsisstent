@@ -31,6 +31,7 @@ import {
   AlertCircle,
 } from 'lucide-react-native';
 import { formatIndonesianFullDate } from '../../shared/utils/dateUtils';
+import { getExamUrgencyConfig } from '../../shared/utils/examUrgency';
 
 const INDONESIAN_MONTHS_SHORT = [
   'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
@@ -151,6 +152,7 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
     .filter((e) => e.daysLeft >= 0)
     .sort((a, b) => a.daysLeft - b.daysLeft);
   const nearestExam = upcomingExams.length > 0 ? upcomingExams[0] : null;
+  const examConfig = nearestExam ? getExamUrgencyConfig(nearestExam.daysLeft) : null;
 
   // Synchronize Redux selectedDay and selectedDate continuously
   useEffect(() => {
@@ -266,34 +268,41 @@ export const ScheduleScreen: React.FC<ScheduleScreenProps> = ({ onOpenAddSubject
           selectedYear={selectedYear}
         />
 
-        {/* 3. EXAM ALERT CARD (Distinct High-Stakes Exam Milestone) */}
-        {nearestExam && (
+        {/* 3. EXAM ALERT CARD (Dynamic Urgency Warning Colors) */}
+        {nearestExam && examConfig ? (
           <TouchableOpacity
-            style={styles.examAlertCard}
+            style={[
+              styles.examAlertCard,
+              {
+                borderColor: examConfig.cardBorder,
+                backgroundColor: examConfig.cardBg,
+                shadowColor: examConfig.tagColor,
+              },
+            ]}
             onPress={() => setSelectedExam(nearestExam)}
             activeOpacity={0.85}
           >
             <View style={styles.examAlertLeft}>
               <View style={styles.examAlertTagRow}>
-                <AlertCircle size={13} color="#DC2626" style={{ marginRight: 4 }} />
-                <Text style={styles.examAlertTag}>JADWAL UJIAN</Text>
+                <AlertCircle size={13} color={examConfig.tagColor} style={{ marginRight: 4 }} />
+                <Text style={[styles.examAlertTag, { color: examConfig.tagColor }]}>JADWAL UJIAN</Text>
               </View>
               <Text style={styles.examAlertTitle} numberOfLines={1}>
                 {nearestExam.subject?.name
                   ? `${nearestExam.subject.name} - ${nearestExam.title}`
                   : nearestExam.title}
               </Text>
-              <Text style={styles.examAlertSubDate}>
+              <Text style={[styles.examAlertSubDate, { color: examConfig.subTextColor }]}>
                 {formatIndonesianFullDate(nearestExam.examDate)}
               </Text>
             </View>
-            <View style={styles.examCountdownPill}>
-              <Text style={styles.examAlertCountdown}>
-                {nearestExam.daysLeft > 0 ? `H-${nearestExam.daysLeft}` : 'Hari Ini!'}
+            <View style={[styles.examCountdownPill, { backgroundColor: examConfig.badgeBg }]}>
+              <Text style={[styles.examAlertCountdown, { color: examConfig.badgeText }]}>
+                {examConfig.urgencyLabel}
               </Text>
             </View>
           </TouchableOpacity>
-        )}
+        ) : null}
 
         {/* 4. SECTION HEADER: Date / Mapel Count */}
         <View style={styles.sectionHeaderRow}>
